@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق المدرسة الذكية - تسجيل الدخول</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0A4D46">
+    <link rel="apple-touch-icon" href="66.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script type="module" src="https://cdn.jsdelivr.net/npm/ldrs/dist/auto/dotWave.js"></script>
+
+    <style>
+        /* 🌟 الألوان الخضراء المستوحاة من صورة التأسيس السليم 🌟 */
+        :root { 
+            --primary-dark: #0A4D46;   /* أخضر غامق جداً للخلفيات والترويسة */
+            --primary-light: #00A67E;  /* أخضر فاتح للأزرار والتأثيرات */
+            --gold: #FFC107;           /* أصفر ذهبي للمسات الجمالية */
+            --bg: #f3f4f6; 
+            --red: #c0392b; 
+            --text-main: #1a252f;
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        /* 🌟 خلفية الشاشة الأساسية (تدرج لوني أخضر) 🌟 */
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: linear-gradient(135deg, var(--primary-dark), #11786A); 
+            margin: 0; padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; 
+        }
+        
+        .floating-install-btn {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #f39c12, var(--gold));
+            color: #000;
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-family: 'Cairo', sans-serif;
+            font-weight: 900;
+            font-size: 14px;
+            border: 3px solid #fff;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            z-index: 100000; 
+            cursor: pointer;
+            display: none; 
+            align-items: center;
+            gap: 10px;
+            animation: slideDown 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes slideDown {
+            from { top: -50px; opacity: 0; }
+            to { top: 20px; opacity: 1; }
+        }
+        .floating-install-btn i { font-size: 18px; }
+        .floating-install-btn:active { transform: translateX(-50%) scale(0.95); }
+
+        #fb-warning-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.9); z-index: 999999; 
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .fb-warning-box {
+            background: white; border-radius: 20px; padding: 30px; text-align: center;
+            border-top: 6px solid #e74c3c; max-width: 400px; width: 100%;
+            animation: zoomIn 0.3s ease;
+        }
+        .fb-warning-box i { font-size: 50px; color: #e74c3c; margin-bottom: 15px; }
+        .fb-warning-box h3 { margin: 0 0 10px 0; color: var(--primary-dark); font-size: 20px; font-weight: 900; }
+        .fb-warning-box p { color: #555; font-size: 15px; line-height: 1.6; font-weight: bold; margin-bottom: 20px;}
+        .fb-instruction { background: #f0fdf4; padding: 15px; border-radius: 10px; border: 1px dashed var(--primary-light); margin-bottom: 20px;}
+        .fb-instruction span { color: var(--primary-dark); font-weight: 900; font-size: 18px; display: block; margin-top: 10px;}
+        .fb-btn-close { background: #7f8c8d; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; font-family: 'Cairo'; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s;}
+        .fb-btn-close:active { transform: scale(0.95); }
+
+        /* 🌟 الشاشة الافتتاحية 🌟 */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #06312C 0%, var(--primary-dark) 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 99999; transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        .splash-title { color: var(--gold); font-size: 26px; font-weight: 900; text-align: center; margin-bottom: 40px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); line-height: 1.4;}
+        .splash-title span { color: #fff; font-size: 20px; font-weight: 700; display: block; margin-top: 5px;}
+
+        .splash-author-box { text-align: center; }
+        .splash-author-box p { color: #bdc3c7; font-size: 13px; font-weight: bold; margin: 0 0 5px 0; letter-spacing: 1px; }
+        .splash-author-box h3 { color: var(--gold); font-size: 20px; font-weight: 900; margin: 0; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
+        .container { 
+            background: white; width: 90%; max-width: 400px; border-radius: 20px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4); overflow: hidden; position: relative; 
+            opacity: 0; transform: translateY(30px); transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .container.show { opacity: 1; transform: translateY(0); }
+
+        /* 🌟 ترويسة نافذة تسجيل الدخول 🌟 */
+        .header { background: var(--primary-dark); padding: 30px 20px; text-align: center; color: white; border-bottom: 5px solid var(--gold); }
+        .header i { font-size: 45px; color: var(--gold); margin-bottom: 10px; text-shadow: 0 3px 10px rgba(0,0,0,0.3);}
+        .header h1 { margin: 0; font-size: 22px; font-weight: 900; }
+        .header p { margin: 5px 0 0 0; font-size: 13px; color: #ddd; font-weight: 600;}
+        
+        .screen { display: none; padding: 30px 20px; animation: fadeIn 0.4s; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+        
+        /* 🌟 حقول الإدخال 🌟 */
+        .input-group { position: relative; margin-bottom: 15px; }
+        .input-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #999; font-size: 18px; pointer-events: none; transition: 0.3s;}
+        .input-group input, .input-group select { width: 100%; padding: 14px 40px 14px 15px; border: 2px solid #eee; border-radius: 12px; font-family: 'Cairo'; font-weight: bold; font-size: 14px; transition: 0.3s; background: #fafafa; color: var(--text-main);}
+        .input-group input::placeholder { color: #999; font-weight: 600; }
+        .input-group input:focus, .input-group select:focus { border-color: var(--primary-light); background: white; box-shadow: 0 0 0 4px rgba(0, 166, 126, 0.1); }
+        .input-group input:focus + i { color: var(--primary-light); }
+        .input-group select { padding-left: 40px; padding-right: 15px; cursor: pointer; appearance: none; -webkit-appearance: none; }
+        
+        /* 🌟 الأزرار الرئيسية 🌟 */
+        .btn-main { 
+            width: 100%; background: linear-gradient(45deg, var(--primary-dark), var(--primary-light)); 
+            color: white; border: none; padding: 14px; border-radius: 12px; 
+            font-family: 'Cairo'; font-weight: 900; font-size: 16px; cursor: pointer; 
+            margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 4px 15px rgba(0, 166, 126, 0.3); 
+        }
+        .btn-main:hover { transform: translateY(-3px); filter: brightness(1.1); box-shadow: 0 8px 20px rgba(0, 166, 126, 0.4); }
+        .btn-main:active { transform: translateY(2px) scale(0.96); box-shadow: 0 2px 5px rgba(0, 166, 126, 0.2); filter: brightness(0.95); }
+        
+        .register-highlight-box {
+            background: #f0fdf4; border: 2px dashed var(--primary-light); border-radius: 12px;
+            padding: 15px; margin-top: 25px; text-align: center;
+        }
+        .register-highlight-box p { margin: 0 0 10px 0; font-size: 13px; color: var(--primary-dark); font-weight: 800; }
+        
+        /* 🌟 زر إنشاء حساب 🌟 */
+        .btn-register { 
+            background: white; color: var(--primary-light); border: 2px solid var(--primary-light); 
+            width: 100%; padding: 10px; border-radius: 8px; font-family: 'Cairo'; 
+            font-weight: 900; font-size: 14px; cursor: pointer; transition: 0.3s;
+        }
+        .btn-register:hover { background: var(--primary-light); color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 166, 126, 0.2);}
+
+        .links { display: flex; justify-content: center; margin-top: 15px; font-size: 13px; font-weight: bold; }
+        .links a { color: #7f8c8d; cursor: pointer; text-decoration: underline; transition: 0.2s; padding: 5px;}
+        .links a:hover { color: var(--primary-dark); transform: scale(1.05);}
+        
+        #custom-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #333; color: #fff; padding: 12px 25px; border-radius: 50px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 99999; transition: 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); opacity: 0; display: flex; align-items: center; gap: 10px; font-size: 13px;}
+        #custom-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        #custom-toast.success { border-right: 5px solid var(--primary-light); }
+        #custom-toast.error { border-right: 5px solid var(--red); }
+        
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 6000; display: none; align-items: center; justify-content: center; }
+        .popup { background: white; width: 90%; max-width: 350px; padding: 25px; border-radius: 15px; text-align: center; border-top: 5px solid var(--gold); animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes zoomIn { from{transform:scale(0.8); opacity:0;} to{transform:scale(1); opacity:1;} }
+        
+        .p-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-family: 'Cairo'; cursor: pointer; color: white; font-size: 15px; margin-top: 15px; background: var(--primary-light); transition: 0.2s;}
+        .p-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        .p-btn:active { transform: translateY(2px) scale(0.96); filter: brightness(0.9); }
+        .b-exit { background: #7f8c8d !important; }
+        
+        .stats-box { text-align: right; font-size: 13px; overflow-y: auto; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 10px; margin-bottom: 5px; max-height: 250px;}
+        .stats-box ul { padding-right: 20px; margin: 0; line-height: 1.8; }
+        .stats-box li { border-bottom: 1px dashed #ddd; padding-bottom: 5px; margin-bottom: 5px; }
+        .stats-box li:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+    <button id="floating-install-btn" class="floating-install-btn" onclick="executeInstall()">
+        <i class="fa fa-download"></i> تثبيت التطبيق
+    </button>
+
+    <div id="fb-warning-modal">
+        <div class="fb-warning-box">
+            <i class="fab fa-facebook"></i>
+            <h3>أنت تستخدم متصفح فيسبوك</h3>
+            <p>متصفح فيسبوك الداخلي يمنع تثبيت التطبيقات على الهاتف.</p>
+            <div class="fb-instruction">
+                لتثبيت التطبيق بنجاح، اضغط على <strong>(الثلاث نقاط ⋮)</strong> بالأعلى واختر:
+                <span style="color:var(--primary-dark);">فتح في كروم<br>Open in Chrome</span>
+            </div>
+            <button class="fb-btn-close" onclick="document.getElementById('fb-warning-modal').style.display='none'">فهمت ذلك، إغلاق التنبيه</button>
+        </div>
+    </div>
+
+    <div id="custom-toast"><i id="toast-icon" class="fa fa-info-circle"></i> <span id="toast-msg"></span></div>
+
+    <div id="splash-screen">
+        <div class="splash-title">التطبيق الأول للتقييمات<br><span>للمدارس المصرية</span></div>
+        
+        <div style="height: 75px; margin-bottom: 40px; display: flex; align-items: center; justify-content: center;">
+            <l-dot-wave size="70" speed="1" color="#f1c40f"></l-dot-wave>
+        </div>
+
+        <div class="splash-author-box">
+            <p>إعداد وتصميم</p>
+            <h3>أ / علاء الوكيل</h3>
+        </div>
+    </div>
+
+    <div class="container" id="main-app-container">
+        <div class="header">
+            <i class="fa fa-graduation-cap"></i>
+            <h1>المدرسة الذكية</h1>
+            <p>نظام الرصد وإدارة التقييمات للمُعلم</p>
+        </div>
+
+        <div id="scr-login" class="screen active">
+            <div class="input-group">
+                <i class="fa fa-user"></i>
+                <input type="text" id="log-id" placeholder="رقم الموبايل أو كود المعلم">
+            </div>
+            <div class="input-group">
+                <i class="fa fa-lock"></i>
+                <input type="password" id="log-pin" placeholder="الباسورد (4 أرقام)" inputmode="numeric" maxlength="4">
+            </div>
+            
+            <button class="btn-main" onclick="executeLogin()"><i class="fa fa-sign-in-alt"></i> دخول للدفتر</button>
+
+            <div class="links">
+                <a onclick="switchScreen('scr-forgot')"><i class="fa fa-key"></i> نسيت الباسورد؟</a>
+            </div>
+
+            <div class="register-highlight-box">
+                <p>أول مرة تستخدم التطبيق؟</p>
+                <button class="btn-register" onclick="switchScreen('scr-register')"><i class="fa fa-user-plus"></i> إنشاء حساب معلم جديد</button>
+            </div>
+        </div>
+
+        <div id="scr-register" class="screen">
+            <h3 style="text-align:center; color:var(--primary-light); margin-top:0; font-weight:900;"><i class="fa fa-user-plus"></i> إنشاء حساب جديد</h3>
+            <div class="input-group"><i class="fa fa-user-edit"></i><input type="text" id="reg-name" placeholder="الاسم رباعي"></div>
+            <div class="input-group"><i class="fa fa-phone"></i><input type="tel" id="reg-mob" placeholder="رقم الموبايل" inputmode="numeric"></div>
+            <div class="input-group"><i class="fa fa-id-badge"></i><input type="number" id="reg-code" placeholder="كود المعلم" inputmode="numeric"></div>
+            <div class="input-group"><i class="fa fa-book"></i><input type="text" id="reg-sub" placeholder="المادة (مثال: اللغة العربية)"></div>
+            <div class="input-group">
+                <i class="fa fa-briefcase"></i>
+                <select id="reg-title">
+                    <option value="" disabled selected>-- اختر الوظيفة --</option>
+                    <option value="معلم مساعد">معلم مساعد</option>
+                    <option value="معلم">معلم</option>
+                    <option value="معلم اول">معلم أول</option>
+                    <option value="معلم اول أ">معلم أول أ</option>
+                    <option value="معلم خبير">معلم خبير</option>
+                    <option value="معلم كبير">معلم كبير</option>
+                </select>
+            </div>
+            <div class="input-group"><i class="fa fa-school"></i><input type="text" id="reg-sch" placeholder="اسم المدرسة (اختياري)"></div>
+            <div class="input-group"><i class="fa fa-lock"></i><input type="password" id="reg-pin" placeholder="أنشئ باسورد (4 أرقام فقط)" inputmode="numeric" maxlength="4"></div>
+            
+            <button class="btn-main" onclick="register()"><i class="fa fa-save"></i> حفظ وإنشاء الحساب</button>
+            <div class="links" style="justify-content:center; margin-top:20px;">
+                <a onclick="switchScreen('scr-login')"><i class="fa fa-arrow-right"></i> عودة لتسجيل الدخول</a>
+            </div>
+        </div>
+
+        <div id="scr-forgot" class="screen">
+            <h3 style="text-align:center; color:var(--red); margin-top:0;"><i class="fa fa-unlock-alt"></i> استرجاع الباسورد</h3>
+            <p style="font-size:13px; color:#777; text-align:center; margin-bottom:20px;">أدخل كود المعلم الخاص بك للبحث عن حسابك واسترجاع الباسورد.</p>
+            <div class="input-group"><i class="fa fa-id-badge"></i><input type="number" id="forgot-code" placeholder="أدخل كود المعلم هنا" inputmode="numeric"></div>
+            <button class="btn-main" style="background:linear-gradient(45deg, #f1c40f, #f39c12); color:black;" onclick="recoverPassword()"><i class="fa fa-search"></i> البحث عن الباسورد</button>
+            <div class="links" style="justify-content:center; margin-top:20px;">
+                <a onclick="switchScreen('scr-login')"><i class="fa fa-arrow-right"></i> عودة للرئيسية</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="mod-show-pin" class="overlay">
+        <div class="popup">
+            <h3 style="color:var(--primary-dark);"><i class="fa fa-check-circle" style="color:var(--primary-light)"></i> تم إيجاد حسابك</h3>
+            <p id="recover-msg" style="font-size:14px; font-weight:bold; color:#555; margin:15px 0; line-height:1.6;"></p>
+            <button class="p-btn" onclick="closeModal('mod-show-pin')">حسناً، عودة للدخول</button>
+        </div>
+    </div>
+
+    <div id="mod-admin-stats" class="overlay">
+        <div class="popup" style="max-width: 400px; border-top: 5px solid var(--primary-light);">
+            <h3 style="color:var(--primary-dark); margin-top:0;"><i class="fa fa-users-cog" style="color:var(--primary-light)"></i> إحصائيات النظام السرية</h3>
+            <p id="admin-stats-count" style="font-weight:900; font-size:16px; color:var(--red); border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:0;"></p>
+            <div id="admin-stats-list" class="stats-box"></div>
+            <button class="p-btn b-exit" onclick="closeModal('mod-admin-stats')">إغلاق النافذة</button>
+        </div>
+    </div>
+
+    <script>
+        const _0x3b1c=['\x68\x74\x74\x70\x73\x3a\x2f\x2f\x79\x74\x72\x76\x6b\x77\x6f\x75\x6b\x6a\x71\x6e\x69\x61\x75\x64\x6c\x74\x76\x7a\x2e\x73\x75\x70\x61\x62\x61\x73\x65\x2e\x63\x6f','\x65\x79\x4a\x68\x62\x47\x63\x69\x4f\x69\x4a\x49\x55\x7a\x49\x31\x4e\x69\x49\x73\x49\x6e\x52\x35\x63\x43\x49\x36\x49\x6b\x70\x58\x56\x43\x4a\x39\x2e\x65\x79\x4a\x70\x63\x33\x4d\x69\x4f\x69\x4a\x7a\x64\x58\x42\x68\x59\x6d\x46\x7a\x5a\x53\x49\x73\x49\x6e\x4a\x6c\x5a\x69\x49\x36\x49\x6e\x6c\x30\x63\x6e\x5a\x72\x64\x32\x39\x31\x61\x32\x70\x78\x62\x6d\x6c\x68\x64\x57\x52\x73\x64\x48\x5a\x36\x49\x69\x77\x69\x63\x6d\x39\x73\x5a\x53\x49\x36\x49\x6d\x46\x75\x62\x32\x34\x69\x4c\x43\x4a\x70\x59\x58\x51\x69\x4f\x6a\x45\x33\x4e\x7a\x41\x79\x4e\x6a\x63\x7a\x4f\x44\x51\x73\x49\x6d\x56\x34\x63\x43\x49\x36\x4d\x6a\x41\x34\x4e\x54\x67\x30\x4d\x7a\x4d\x34\x4e\x48\x30\x2e\x6c\x36\x44\x46\x67\x35\x58\x74\x73\x67\x70\x67\x4e\x69\x59\x74\x49\x7a\x50\x49\x7a\x62\x53\x78\x2d\x62\x57\x54\x46\x6f\x51\x73\x73\x32\x72\x5f\x66\x48\x6f\x63\x7a\x2d\x49'];
+        let deferredPrompt;
+        let isSplashDone = false; 
+        const installBtn = document.getElementById('floating-install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if(isSplashDone) {
+                installBtn.style.display = 'flex';
+            }
+        });
+
+        function executeInstall() {
+            installBtn.style.display = 'none';
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            showToast('تم تثبيت التطبيق بنجاح!', 'success');
+            installBtn.style.display = 'none';
+        });
+
+        if ('serviceWorker' in navigator) { 
+            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => {}); }); 
+        }
+
+        window.onload = function() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            if ((ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("Instagram") > -1)) {
+                document.getElementById('fb-warning-modal').style.display = 'flex';
+            }
+
+            setTimeout(() => {
+                const activeUser = localStorage.getItem('ACTIVE_USER');
+                if (activeUser) {
+                    window.location.href = "taqeem.html";
+                } else {
+                    const splash = document.getElementById('splash-screen');
+                    const mainContainer = document.getElementById('main-app-container');
+                    
+                    splash.style.opacity = '0';
+                    splash.style.visibility = 'hidden';
+                    
+                    setTimeout(() => {
+                        document.body.style.overflow = 'auto'; 
+                        mainContainer.classList.add('show');
+                        
+                        isSplashDone = true;
+                        if(deferredPrompt) {
+                            installBtn.style.display = 'flex';
+                        }
+                    }, 500);
+                }
+            }, 2500); 
+        };
+
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('input').forEach(inp => inp.value = '');
+            if(id === 'scr-register') document.getElementById('reg-title').selectedIndex = 0;
+        }
+
+        let toastTimer;
+        function showToast(msg, type='success', duration=3000) { 
+            const t = document.getElementById('custom-toast'); 
+            document.getElementById('toast-msg').innerText = msg; 
+            t.className = `show ${type}`; 
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.className = '', duration); 
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function register() {
+            const name = document.getElementById('reg-name').value.trim();
+            const mob = document.getElementById('reg-mob').value.trim();
+            const code = document.getElementById('reg-code').value.trim();
+            const sub = document.getElementById('reg-sub').value.trim();
+            const title = document.getElementById('reg-title').value;
+            const sch = document.getElementById('reg-sch').value.trim();
+            const pin = document.getElementById('reg-pin').value.trim();
+
+            if(!name || !mob || !code || !sub || !title || !pin) return showToast('يرجى إكمال جميع البيانات الأساسية!', 'error');
+            if(!/^\d{4}$/.test(pin)) return showToast('الباسورد يجب أن يكون 4 أرقام فقط!', 'error');
+
+            for(let i=0; i<localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if(key.startsWith('TEACHER_')) {
+                    let t = JSON.parse(localStorage.getItem(key));
+                    if(t.mob === mob) return showToast('رقم الموبايل مسجل مسبقاً!', 'error');
+                    if(t.code === code) return showToast('كود المعلم مسجل مسبقاً!', 'error');
+                }
+            }
+
+            const teacherData = { name, mob, code, sub, title, sch, pin };
+            localStorage.setItem('TEACHER_' + mob, JSON.stringify(teacherData));
+            
+            localStorage.setItem('ACTIVE_USER', mob);
+            showToast('تم إنشاء الدفتر بنجاح! جاري الدخول...', 'success');
+            setTimeout(() => { window.location.href = "taqeem.html"; }, 1500); 
+        }
+
+        function executeLogin() {
+            const id = document.getElementById('log-id').value.trim();
+            const pin = document.getElementById('log-pin').value.trim();
+            
+            if (id === '9999' || pin === '9999') {
+                let teachersCount = 0; let listHtml = '<ul>';
+                for(let i=0; i<localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    if(key.startsWith('TEACHER_') && !key.includes('1980')) {
+                        let t = JSON.parse(localStorage.getItem(key));
+                        teachersCount++;
+                        listHtml += `<li><strong style="color:var(--primary-dark)">${t.name}</strong> <br> <span style="color:#777; font-size:11px;">مادة: ${t.sub} | كود: ${t.code}</span></li>`;
+                    }
+                }
+                listHtml += '</ul>';
+                if(teachersCount === 0) listHtml = '<p style="text-align:center; color:#999;">لا يوجد معلمين مسجلين.</p>';
+                document.getElementById('admin-stats-count').innerText = `إجمالي المعلمين المسجلين: ${teachersCount} معلم`;
+                document.getElementById('admin-stats-list').innerHTML = listHtml;
+                openModal('mod-admin-stats');
+                document.getElementById('log-id').value = ''; document.getElementById('log-pin').value = '';
+                return; 
+            }
+
+            if (id === '1980' || pin === '1980') {
+                const adminData = { name: "مسئول النظام", mob: "1980", code: "1980", sub: "الإدارة والكنترول", title: "مدير نظام", sch: "الكنترول الرئيسي", pin: "1980" };
+                localStorage.setItem('TEACHER_1980', JSON.stringify(adminData));
+                localStorage.setItem('ACTIVE_USER', '1980');
+                window.location.href = "taqeem.html";
+                return;
+            }
+
+            if(!id || !pin) return showToast('يرجى كتابة الكود/الموبايل والباسورد', 'error');
+
+            let foundMob = null; let teacherName = "";
+            for(let i=0; i<localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if(key.startsWith('TEACHER_')) {
+                    let t = JSON.parse(localStorage.getItem(key));
+                    if((t.mob === id || t.code === id) && t.pin === pin) { 
+                        foundMob = t.mob; 
+                        teacherName = t.name.split(' ')[0];
+                        break; 
+                    }
+                }
+            }
+
+            if(foundMob) {
+                localStorage.setItem('ACTIVE_USER', foundMob);
+                showToast(`أهلاً بك أستاذ ${teacherName}، جاري الدخول...`, 'success');
+                setTimeout(() => { window.location.href = "taqeem.html"; }, 1000);
+            } else { 
+                showToast('البيانات غير صحيحة، تأكد من الكود والباسورد', 'error'); 
+            }
+        }
+
+        function recoverPassword() {
+            const code = document.getElementById('forgot-code').value.trim();
+            if(!code) return showToast('يرجى إدخال كود المعلم أولاً', 'error');
+            let foundTeacher = null;
+            for(let i=0; i<localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if(key.startsWith('TEACHER_')) {
+                    let t = JSON.parse(localStorage.getItem(key));
+                    if(t.code === code) { foundTeacher = t; break; }
+                }
+            }
+            if(foundTeacher) {
+                document.getElementById('recover-msg').innerHTML = `أهلاً بك: أ/ ${foundTeacher.name}<br><br>الباسورد الخاص بك هو:<br><span style="font-size:32px; color:var(--red); letter-spacing:8px; display:block; margin-top:10px;">${foundTeacher.pin}</span>`;
+                openModal('mod-show-pin'); document.getElementById('forgot-code').value = '';
+            } else { 
+                showToast('عفواً، كود المعلم هذا غير مسجل لدينا!', 'error'); 
+            }
+        }
+    </script>
+</body>
+</html>

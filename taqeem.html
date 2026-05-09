@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق المدرسة الذكية - الرصد الإعدادي</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root { --primary: #2c3e50; --gold: #f1c40f; --bg: #f3f4f6; --blue: #2980b9; --green: #27ae60; --red: #c0392b; --purple: #8e44ad; --orange: #d35400; --teal: #00cec9; --info: #3498db; --joy-blue: #0984e3;}
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { font-family: 'Cairo', sans-serif; background: var(--bg); margin: 0; padding: 0; padding-bottom: 50px; user-select: none; }
+
+        /* 🌟 تصميم الرسايل الطائرة الجديد المطابق للصورة 🌟 */
+        #custom-toast { 
+            position: fixed; 
+            top: 20px; 
+            left: -400px; /* يبدأ مخفي خارج الشاشة من اليسار */
+            background: #333; 
+            color: #fff; 
+            padding: 12px 20px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
+            z-index: 99999; 
+            transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            font-size: 14px;
+            min-width: 250px;
+        }
+        #custom-toast.show { left: 20px; /* يظهر عائماً على اليسار */ }
+        #custom-toast.success { background: #059669; /* أخضر زاهي للنجاح */ }
+        #custom-toast.error { background: #e11d48; /* أحمر زاهي للخطأ */ }
+        #custom-toast.info { background: #0284c7; }
+
+        .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; width: 100%; padding: 15px; }
+        .active { display: flex !important; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+        .status-bar { background: white; padding: 10px; border-radius: 15px; margin-bottom: 15px; width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .toggle-online { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: bold; background: #eee; padding: 5px 10px; border-radius: 20px; }
+        .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--green); }
+        input:checked + .slider:before { transform: translateX(16px); }
+
+        .dashboard-container { width: 100%; max-width: 600px; }
+        .filters { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; }
+        .sel-box { flex: 1 1 45%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Cairo'; font-weight: bold; text-align: center; font-size: 14px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .btn-tile { border: none; border-radius: 10px; color: white; font-family: 'Cairo'; font-weight: bold; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.1); transition: transform 0.1s; font-size: 14px; text-align:center;}
+        .btn-tile:active { transform: translateY(4px); box-shadow: none; }
+        .btn-tile i { font-size: 20px; margin-bottom: 5px; }
+        
+        .b-add { background: var(--blue); } .b-bulk { background: var(--purple); }
+        .b-sort { background: #34495e; } .b-clean { background: var(--teal); }
+        .b-fast { background: var(--gold); color: black; } .b-stats { background: var(--info); }
+        .b-trans { background: #16a085; } .b-week { background: var(--orange); }
+        .b-reset { background: var(--red); } .b-clear { background: #c0392b; } 
+        .b-save { background: var(--green); } .b-xls { background: #e67e22; }
+        .b-pdf { background: #e74c3c; } .b-exit { background: #7f8c8d; }
+        
+        /* 🌟 تنسيقات زر المايكروفون المدمج 🌟 */
+        .voice-btn-inline { background: linear-gradient(45deg, #e84393, #d63031); color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); flex-shrink: 0; }
+        .voice-btn-inline:active { transform: scale(0.95); }
+        .voice-btn-inline.recording { animation: pulse-inline 1s infinite alternate; background: #ff7675; }
+        @keyframes pulse-inline { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(214, 48, 49, 0.4); } 100% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(214, 48, 49, 0); } }
+
+        .btn-open-sheet { grid-column: span 2; background: linear-gradient(45deg, #2c3e50, #34495e); height: 60px; flex-direction: row; gap: 15px; font-size: 18px; color: var(--gold); border: 2px solid var(--gold); }
+        .btn-open-term { grid-column: span 1; background: linear-gradient(45deg, #8e44ad, #9b59b6); height: 60px; flex-direction: row; gap: 10px; font-size: 14px; color: #fff; border: 2px solid #fff; }
+        .btn-open-cert { grid-column: span 1; background: linear-gradient(45deg, #d35400, #e67e22); height: 60px; flex-direction: row; gap: 10px; font-size: 14px; color: #fff; border: 2px solid #fff; }
+        .btn-open-apprec { grid-column: span 2; background: linear-gradient(45deg, #f1c40f, #f39c12); height: 60px; flex-direction: row; gap: 15px; font-size: 18px; color: #000; border: 2px solid #000; }
+
+        .admin-only { display: none; }
+
+        #scr-sheet, #scr-term, #scr-cert, #scr-appreciation { padding: 10px; align-items: stretch; width: 100%; max-width: 100%; overflow-x: hidden; }
+        .sheet-toolbar { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px; width: 100%; }
+        .btn-top { flex: 1; padding: 12px; border: none; border-radius: 10px; font-family: 'Cairo'; font-weight: bold; color: white; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+        .table-wrap { overflow-x: auto; background: white; border-radius: 10px; padding-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { border: 1px solid #333; text-align: center; padding: 4px; height: 35px; font-size: 12px; vertical-align: middle; transition: all 0.2s;}
+        thead th { background: #d6eaf8; color: black; font-weight: bold; }
+        
+        .v-head { height: 90px; vertical-align: middle; padding: 0 !important; text-align: center; }
+        .v-text-inner { display: inline-block; transform: rotate(-90deg); white-space: nowrap; font-size: 12px; font-weight: bold; line-height: 1; }
+        
+        .test-col { background: #e8f8f5 !important; font-weight: bold; color: var(--primary); border-left: 2px solid #333 !important; }
+        .sum-col { background: #fadbd8; font-weight: bold; border-left: 2px solid #333 !important;}
+        .avg-col { background: #d5f5e3; font-weight: bold; border-left: 2px solid #000 !important; }
+        .term-col { background: #e8eaed !important; font-weight: 900; font-size: 15px !important; color: var(--red); border-left: 2px solid #000 !important; }
+        
+        input.score { width: 100%; height: 100%; border: none; text-align: center; font-weight: bold; font-family: 'Cairo'; background: transparent; font-size: 14px; transition: 0.2s; }
+        input.score:focus { background: #fff3cd; }
+        .empty-alert { background: #fffde7 !important; box-shadow: inset 0 0 0 1px #f1c40f !important; }
+        
+        .sticky-head { position: sticky; right: 0; background: #d6eaf8 !important; z-index: 3; border-left: 2px solid #333; }
+        .sticky-col { position: sticky; right: 0; background: #fff; z-index: 2; border-left: 2px solid #333; min-width: 170px !important; max-width: 250px; font-weight: bold; color: var(--primary); white-space: nowrap; text-align: right !important; padding-right: 10px !important; padding-left: 5px !important;}
+
+        .sheet-page { page-break-after: always; margin-bottom: 30px; display: block; width: 100%;}
+        .sheet-page:last-child { page-break-after: auto; margin-bottom: 0;}
+
+        .badge-status { background: #e0f7fa; color: #0277bd; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-right: 5px; border: 1px solid #b3e5fc; display: inline-block;}
+        .badge-status.red { background: #ffebee; color: #c62828; border-color: #ffcdd2;}
+        .badge-status.purple { background: #f3e5f5; color: #6a1b9a; border-color: #e1bee7;}
+        .badge-status.orange { background: #fff3e0; color: #e65100; border-color: #ffe0b2;}
+
+        .cert-page { background: white; padding: 15px; margin-bottom: 20px; border: 2px solid #000; border-radius: 5px; position: relative; }
+        .cert-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-weight: bold; font-size: 12px; line-height: 1.4; }
+        .cert-title { text-align: center; flex: 2; }
+        .cert-title h2 { color: #d32f2f; margin: 5px 0; font-weight: 900; font-size: 18px; text-decoration: underline; }
+        .cert-info-table { width: 40%; margin-bottom: 10px; border-collapse: collapse; float: left; }
+        .cert-info-table th, .cert-info-table td { border: 1px solid #000; padding: 4px; font-size: 12px; font-weight: bold; }
+        .cert-info-table th { background: #f0f0f0; width: 30%; text-align: right; padding-right: 10px; }
+        .cert-main-table { width: 100%; border-collapse: collapse; font-size: 11px; clear: both; }
+        .cert-main-table th, .cert-main-table td { border: 1px solid #000; padding: 2px; text-align: center; }
+        .cert-main-table thead th { background-color: #fdfdfd !important; font-weight: 800; }
+        .bg-yellow { background-color: #fff9c4 !important; }
+        .bg-blue { background-color: #e3f2fd !important; }
+        .cert-footer { display: flex; justify-content: space-between; margin-top: 15px; font-weight: bold; font-size: 14px; padding: 0 20px; }
+        .sep-row td { background-color: #dcedc8 !important; font-weight: bold; font-size: 12px; padding: 4px !important; }
+
+        .appreciation-cert { background: #fffdf9; border: 15px solid #8e44ad; padding: 10px; margin-bottom: 30px; height: 190mm; box-sizing: border-box; position: relative; page-break-after: always; page-break-inside: avoid; }
+        .cert-border-inner { border: 5px double #f1c40f; height: 100%; padding: 40px 50px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,253,240,1) 100%); }
+        .cert-top-details { width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 800; color: #2c3e50; }
+        .cert-logo-img { max-width: 90px; max-height: 90px; object-fit: contain; }
+        .cert-main-title { color: #c0392b; font-size: 45px; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); margin: 0; border-bottom: 3px solid #f1c40f; padding-bottom: 15px; }
+        .cert-body-text { font-size: 26px; line-height: 2.2; text-align: center; color: #34495e; font-weight: 700; }
+        .cert-body-text strong.std-name { color: #2980b9; font-size: 32px; text-decoration: underline dashed; }
+        .cert-body-text strong.highlight { color: #d35400; }
+        .cert-signatures { display: flex; justify-content: space-between; width: 85%; font-size: 22px; font-weight: 800; color: #2c3e50; margin-top: 20px; }
+
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 6000; display: none; align-items: center; justify-content: center; }
+        .popup { background: white; width: 90%; max-width: 380px; padding: 15px; border-radius: 12px; text-align: center; border-top: 5px solid var(--gold); animation: zoomIn 0.2s; max-height: 95vh; display: flex; flex-direction: column; overflow-y: auto; }
+        @keyframes zoomIn { from{transform:scale(0.8)} to{transform:scale(1)} }
+        
+        .popup input[type="text"], .popup input[type="password"], .popup input[type="number"], .popup input[type="tel"], .popup select, .popup textarea { 
+            width: 100%; padding: 6px 10px; margin: 4px 0; border: 2px solid #ddd; 
+            border-radius: 6px; font-family: 'Cairo', sans-serif; font-weight: bold; 
+            text-align: center; font-size: 13px; box-sizing: border-box; transition: 0.3s; height: 36px;
+        }
+        .popup textarea { height: auto; min-height: 60px; text-align: right; resize: none; line-height: 1.5; }
+        .popup input[type="range"] { width: 100%; margin: 5px 0 10px 0; accent-color: var(--blue); height: auto;}
+        .popup input:focus, .popup select:focus { border-color: var(--blue); outline: none; box-shadow: 0 0 5px rgba(41, 128, 185, 0.3); }
+        .popup h3 { margin-top: 0; margin-bottom: 10px; font-size: 18px; }
+        
+        .popup-btns { display: flex; gap: 8px; margin-top: 10px; }
+        .p-btn { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; font-family: 'Cairo', sans-serif; cursor: pointer; color: white !important; font-size: 13px; background: var(--blue); transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+        .p-btn:active { transform: scale(0.95); }
+        .p-btn.b-blue { background-color: var(--blue) !important; }
+        .p-btn.b-red { background-color: var(--red) !important; }
+        .p-btn.b-save { background-color: var(--green) !important; }
+        .p-btn.b-exit { background-color: #7f8c8d !important; }
+        .p-btn.b-purple { background-color: var(--purple) !important; }
+        
+        .stats-box { text-align: right; font-size: 13px; overflow-y: auto; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px; flex: 1; }
+        .stats-box h4 { margin: 10px 0; color: var(--primary); border-bottom: 2px solid var(--gold); padding-bottom: 5px; font-size: 14px;}
+        .stats-box ul { padding-right: 20px; margin: 0; }
+        .stats-box li { margin-bottom: 6px; }
+
+        .week-date-input { width: 95%; max-width: 110px; border: 1px solid #ccc; font-family: 'Cairo'; font-size: 10px; padding: 2px; border-radius: 4px; text-align: center; font-weight: bold; color: var(--primary); background: white; margin-top: 3px; }
+
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            .no-print, .status-bar, .filters, .sheet-toolbar, .footer, .overlay, #custom-toast { display: none !important; }
+            .screen { display: none !important; }
+            .screen.active { display: block !important; padding: 0 !important; margin: 0 !important; }
+            .table-wrap { overflow: visible !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; border: none !important; }
+            
+            .sticky-head, .sticky-col { position: static !important; border-left: 1px solid #000 !important; }
+            table { width: 100% !important; border-collapse: collapse !important; border: 2px solid #000 !important; }
+            th, td { border: 1px solid #000 !important; padding: 2px !important; height: auto !important; color: #000 !important; }
+            input.score { border: none !important; background: transparent !important; color: black !important; font-size: 11px !important; padding: 0 !important; margin: 0 !important; width: 100% !important; text-align: center !important; box-shadow: none !important; }
+            thead th, .sticky-head, .bg-yellow, .bg-blue, .sep-row td { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            .week-date-input { border: none !important; background: transparent !important; color: #000 !important; font-size: 11px !important; text-align: center; width: 100% !important; padding: 0 !important; margin: 0 !important; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+            .week-date-input::-webkit-calendar-picker-indicator { display: none !important; }
+        }
+    </style>
+    <style id="dynamic-print-style"></style>
+</head>
+<body id="mainBody">
+
+    <div id="custom-toast">
+        <i id="toast-icon" class="fa fa-check-circle" style="font-size:18px;"></i> 
+        <span id="toast-msg"></span>
+        <i class="fa fa-times" style="cursor:pointer; margin-right:auto; padding-right:10px; opacity:0.8; font-size:16px;" onclick="this.parentElement.className=''"></i>
+    </div>
+
+    <div id="scr-menu" class="screen active">
+        <div class="status-bar no-print">
+            <div id="app-header" style="font-weight:bold; color:var(--primary)"></div>
+            <div class="toggle-online"><span>☁️ أونلاين</span><label class="switch"><input type="checkbox" id="online-check"><span class="slider"></span></label></div>
+        </div>
+
+        <div class="dashboard-container">
+            <div class="filters no-print">
+                <select id="f-grade" class="sel-box" onchange="render()"><option>الأول الإعدادي</option><option>الثاني الإعدادي</option><option>الثالث الإعدادي</option></select>
+                <select id="f-class" class="sel-box" onchange="render()"></select>
+                <select id="f-subject" class="sel-box" onchange="render()">
+                    <option value="اللغة العربية">اللغة العربية</option><option value="اللغة الإنجليزية">اللغة الإنجليزية</option><option value="الدراسات الاجتماعية">الدراسات الاجتماعية</option><option value="الرياضيات">الرياضيات</option><option value="العلوم">العلوم</option><option value="التربية الدينية">التربية الدينية</option><option value="التربية الفنية">التربية الفنية</option><option value="التربية الموسيقية">التربية الموسيقية</option>
+                </select>
+                <select id="f-month" class="sel-box" onchange="render()"><option>سبتمبر</option><option>أكتوبر</option><option>نوفمبر</option><option>ديسمبر</option><option>فبراير</option><option>مارس</option><option>أبريل</option><option>مايو</option></select>
+            </div>
+
+            <div class="dashboard-grid no-print">
+                <button class="btn-tile btn-open-sheet" onclick="openSheet()"><i class="fa fa-book-open"></i> دفتر درجات الشهر</button>
+                <button class="btn-tile btn-open-term" onclick="openTermSheet()"><i class="fa fa-graduation-cap"></i> شيت نهاية الترم (70)</button>
+                <button class="btn-tile btn-open-cert" onclick="openCertScreen()"><i class="fa fa-certificate"></i> طباعة شهادات الشهور</button>
+                <button class="btn-tile btn-open-apprec" onclick="openAppreciationScreen()"><i class="fa fa-award"></i> شهادات التقدير</button>
+                <button class="btn-tile b-fast" onclick="openFast()"><i class="fa fa-bolt"></i> رصد سريع بالدرجات</button>
+                
+                <button class="btn-tile admin-only" id="btn-admin-analysis" style="background:var(--danger); color:white;" onclick="openAnalysisModal()"><i class="fa fa-chart-line"></i> تحليل النتائج للضعاف</button>
+
+                <button class="btn-tile b-add" onclick="openModal('mod-add')"><i class="fa fa-user-plus"></i> إضافة طالب</button>
+                <button class="btn-tile b-bulk" onclick="openModal('mod-bulk')"><i class="fa fa-users"></i> لصق / استيراد أسماء</button>
+                <button class="btn-tile b-sort" onclick="openSortModal()"><i class="fa fa-sort-alpha-down"></i> ترتيب أبجدي</button>
+                <button class="btn-tile b-clean" onclick="normalizeNames()"><i class="fa fa-broom"></i> توحيد الأسماء</button>
+                <button class="btn-tile b-week" onclick="openWeeksManager()"><i class="fa fa-calendar-week"></i> إدارة الأسابيع</button>
+                
+                <button class="btn-tile b-stats" onclick="generateStats()"><i class="fa fa-chart-pie"></i> إحصائيات الرصد</button>
+                
+                <button class="btn-tile b-trans" onclick="openModal('mod-trans')"><i class="fa fa-copy"></i> نسخ الدرجات</button>
+                <button class="btn-tile b-save" onclick="openSaveOptionsModal()"><i class="fa fa-save"></i> حفظ / تعديل بيانات</button>
+                <button class="btn-tile b-xls" onclick="exportExcel()"><i class="fa fa-file-excel"></i> تصدير Excel</button>
+                <button class="btn-tile b-pdf" onclick="openPrintModal('sheet')"><i class="fa fa-print"></i> إعدادات الطباعة</button>
+                <button class="btn-tile b-reset" onclick="openModal('mod-reset')"><i class="fa fa-eraser"></i> تصفير شهر</button>
+                <button class="btn-tile b-clear" onclick="openModal('mod-clear')"><i class="fa fa-trash-alt"></i> مسح فصل أو مادة</button>
+                <button class="btn-tile b-exit" onclick="logout()"><i class="fa fa-sign-out-alt"></i> خروج آمن</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scr-sheet" class="screen">
+        <div class="sheet-toolbar no-print">
+            <button class="btn-top" style="background:#7f8c8d" onclick="backToMenu()"><i class="fa fa-arrow-right"></i> العودة للوحة التحكم</button>
+            <button class="btn-top b-pdf" onclick="openPrintModal('sheet')"><i class="fa fa-print"></i> طباعة السجل (رسمي)</button>
+        </div>
+        <div class="table-wrap" id="sheet-area"></div>
+    </div>
+    
+    <div id="scr-term" class="screen">
+        <div class="sheet-toolbar no-print">
+            <button class="btn-top" style="background:#7f8c8d" onclick="backToMenu()"><i class="fa fa-arrow-right"></i> العودة للوحة التحكم</button>
+            <select id="term-sel" class="sel-box" style="flex:2; margin:0;" onchange="renderTermSheet()"><option value="1">الترم الأول (سبتمبر - ديسمبر)</option><option value="2">الترم الثاني (فبراير - مايو)</option></select>
+            <button class="btn-top b-pdf" onclick="openPrintModal('term')"><i class="fa fa-print"></i> طباعة السجل</button>
+            <button class="btn-top b-xls" onclick="exportTermExcel()"><i class="fa fa-file-excel"></i> تصدير Excel</button>
+        </div>
+        <div class="table-wrap" id="term-area"></div>
+    </div>
+    
+    <div id="scr-cert" class="screen">
+        <div class="sheet-toolbar no-print">
+            <button class="btn-top" style="background:#7f8c8d" onclick="backToMenu()"><i class="fa fa-arrow-right"></i> العودة للوحة التحكم</button>
+            <select id="cert-student-sel" class="sel-box" style="flex:2; margin:0;" onchange="renderCertificates()"><option value="all">طباعة جميع طلاب الفصل</option></select>
+            <button class="btn-top b-pdf" onclick="executeNativePrint('landscape')"><i class="fa fa-print"></i> طباعة الشهادات</button>
+        </div>
+        <div class="table-wrap" id="cert-area" style="background:transparent; box-shadow:none;"></div>
+    </div>
+    
+    <div id="scr-appreciation" class="screen">
+        <div class="sheet-toolbar no-print">
+            <button class="btn-top" style="background:#7f8c8d" onclick="backToMenu()"><i class="fa fa-arrow-right"></i> العودة للوحة التحكم</button>
+            <select id="apprec-student-sel" class="sel-box" style="flex:1; margin:0;" onchange="renderAppreciation()"><option value="all">لجميع طلاب الفصل</option></select>
+            <button class="btn-top b-pdf" onclick="executeNativePrint('landscape')"><i class="fa fa-print"></i> طباعة الشهادات</button>
+        </div>
+        <div class="table-wrap" id="appreciation-area" style="background:transparent; box-shadow:none; padding:0;"></div>
+    </div>
+
+    <div class="footer no-print" style="text-align:center; padding:10px; color:#777; font-size:12px; font-weight:bold;">إعداد وتصميم أ/ علاء الوكيل | 01030302005</div>
+
+    <div id="mod-custom-confirm" class="overlay" style="z-index: 7000;">
+        <div class="popup" style="border-top:5px solid var(--blue);">
+            <h3 id="custom-confirm-title">تأكيد</h3>
+            <p id="custom-confirm-msg" style="margin:10px 0; font-size:14px; font-weight:bold; color:var(--primary); white-space: pre-wrap; line-height: 1.6;"></p>
+            <div class="popup-btns">
+                <button class="p-btn b-save" id="custom-confirm-btn-yes" onclick="executeCustomConfirm()">موافق</button>
+                <button class="p-btn b-exit" onclick="closeModal('mod-custom-confirm')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="mod-print" class="overlay">
+        <div class="popup" style="max-width: 400px;">
+            <h3 style="color:var(--primary);"><i class="fa fa-print"></i> إعدادات الطباعة العادية</h3>
+            <div style="text-align:right; font-size:13px; margin-bottom:10px; padding:10px; background:#f4f6f8; border-radius:10px; border:1px solid #ddd;">
+                <label style="font-weight:bold; color:var(--primary);">عدد الأسماء في الصفحة الواحدة:</label>
+                <input type="number" id="print-rows-input" value="30" min="10" max="100" onchange="triggerReRender()">
+                <label style="font-weight:bold; color:var(--primary); display:block; margin-top:10px;">عرض وتكبير الجدول: <span id="scale-val" style="color:var(--red);">100</span>%</label>
+                <input type="range" id="print-scale-input" min="70" max="140" value="100" oninput="updateTableScale()">
+                <label style="font-weight:bold; color:var(--primary); display:block; margin-top:10px;">عرض خانة الاسم: <span id="name-width-val" style="color:var(--red);">170</span>px</label>
+                <input type="range" id="print-name-width-input" min="100" max="300" value="170" oninput="updateTableScale()">
+            </div>
+            <p style="font-size:12px; color:var(--red); font-weight:bold; margin: 5px 0;">اختر اتجاه الطباعة للمتصفح:</p>
+            <div class="popup-btns" style="margin-top:5px;">
+                <button class="p-btn b-red" onclick="executeNativePrint('portrait', true)"><i class="fa fa-portrait"></i> طولية</button>
+                <button class="p-btn b-red" onclick="executeNativePrint('landscape', true)"><i class="fa fa-image"></i> عرضية</button>
+            </div>
+            <button class="p-btn b-exit" style="width:100%; margin-top:10px" onclick="closeModal('mod-print')">إغلاق النافذة</button>
+        </div>
+    </div>
+
+    <div id="mod-analysis" class="overlay">
+        <div class="modal-content" style="max-width: 850px; padding: 15px;">
+            <h3 style="color:var(--danger); margin-top:0; text-align:center;"><i class="fa fa-chart-line"></i> تقرير الطلاب الضعاف (أقل من 50%)</h3>
+            <p style="text-align:center; font-size:12px; color:#777; margin-bottom:10px; font-weight:bold;">تقرير مخصص للإدارة لمتابعة وحصر الطلاب ضعاف التحصيل بناءً على الدرجات المرصودة فعلياً.</p>
+            
+            <div class="no-print" style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:10px; background:#f4f6f8; padding:8px; border-radius:8px;">
+                <label style="font-weight:bold; color:var(--primary);">الشهر:</label>
+                <select id="ana-month" class="sel-box" style="margin:0; padding:6px; width:120px;">
+                    <option value="سبتمبر">سبتمبر</option><option value="أكتوبر">أكتوبر</option><option value="نوفمبر">نوفمبر</option><option value="ديسمبر">ديسمبر</option><option value="فبراير">فبراير</option><option value="مارس">مارس</option><option value="أبريل">أبريل</option><option value="مايو">مايو</option>
+                </select>
+                <button class="btn-top" style="background:var(--joy-blue); padding:5px 10px; flex:0.5;" onclick="generateAnalysis()">تحليل وعرض</button>
+            </div>
+
+            <div class="stats-box" style="display:flex; justify-content:space-around; text-align:center; font-size:14px; background:#fff5f5; border-color:#ffcdd2; margin-bottom:15px;">
+                <div>المقيدين بالفصل<br><strong id="ana-total" style="color:var(--primary); font-size:22px;">0</strong></div>
+                <div>النهاية العظمى للمرصود<br><strong id="ana-max" style="color:var(--success); font-size:22px;">0</strong></div>
+                <div>عدد الضعاف<br><strong id="ana-weak" style="color:var(--danger); font-size:22px;">0</strong></div>
+                <div>نسبة الضعف<br><strong id="ana-percent" style="color:var(--orange); font-size:22px;">0%</strong></div>
+            </div>
+
+            <div class="no-print" style="display:flex; gap:8px; margin-bottom:10px;">
+                <button class="btn-top" style="background:var(--danger); flex:1;" onclick="executeNativePrint('portrait')"><i class="fa fa-print"></i> طباعة التقرير</button>
+            </div>
+            
+            <div class="report-table-wrap" id="analysis-wrap" style="background:white; padding:0; max-height: 45vh; overflow-y: auto; border:none;"></div>
+            
+            <button class="btn-top no-print" style="background:#7f8c8d; width:100%; margin-top:15px; font-size:15px;" onclick="closeModal('mod-analysis')">إغلاق النافذة</button>
+        </div>
+    </div>
+
+    <div id="mod-clear" class="overlay">
+        <div class="popup" style="border-top: 5px solid var(--danger);">
+            <h3 style="color:var(--red)"><i class="fa fa-trash-alt"></i> مسح فصل / مادة</h3>
+            <div style="display:flex; gap:5px; margin-bottom:5px;"><select id="clr-grade" class="sel-box"><option>الأول الإعدادي</option><option>الثاني الإعدادي</option><option>الثالث الإعدادي</option></select><select id="clr-class" class="sel-box"></select></div>
+            <select id="clr-subject" class="sel-box" style="margin-bottom:10px; border-color:var(--danger);"><option value="all" style="color:var(--danger); font-weight:bold;">مسح من جميع المواد</option><option value="اللغة العربية">اللغة العربية</option><option value="اللغة الإنجليزية">اللغة الإنجليزية</option><option value="الدراسات الاجتماعية">الدراسات الاجتماعية</option><option value="الرياضيات">الرياضيات</option><option value="العلوم">العلوم</option><option value="التربية الدينية">التربية الدينية</option><option value="التربية الفنية">التربية الفنية</option><option value="التربية الموسيقية">التربية الموسيقية</option></select>
+            <div style="text-align:right; font-size:12px; margin-bottom:10px; padding:8px; background:#ffcccc; border-radius:8px;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="clr-stds" style="width:18px; height:18px; margin:0;"> <strong>حذف أسماء الطلاب نهائياً</strong></label></div>
+            <input type="password" id="clr-pin" placeholder="أدخل الكود السري للتأكيد (0000)">
+            <div class="popup-btns"><button class="p-btn b-red" onclick="executeClear()">تنفيذ المسح</button><button class="p-btn b-exit" onclick="closeModal('mod-clear')">إلغاء</button></div>
+        </div>
+    </div>
+
+    <div id="mod-add" class="overlay"><div class="popup">
+        <h3><i class="fa fa-user-plus"></i> إضافة طالب</h3>
+        <div style="display:flex; gap:5px; margin-bottom:5px;"><select id="add-grade" class="sel-box" style="padding:6px;"><option>الأول الإعدادي</option><option>الثاني الإعدادي</option><option>الثالث الإعدادي</option></select><select id="add-class" class="sel-box" style="padding:6px;"></select></div>
+        <select id="add-subject" class="sel-box" style="padding:6px; margin-bottom:5px;"><option value="all" style="color:var(--red); font-weight:bold;">لكل المواد (دفعة واحدة)</option><option value="اللغة العربية">اللغة العربية</option><option value="اللغة الإنجليزية">اللغة الإنجليزية</option><option value="الدراسات الاجتماعية">الدراسات الاجتماعية</option><option value="الرياضيات">الرياضيات</option><option value="العلوم">العلوم</option><option value="التربية الدينية">التربية الدينية</option><option value="التربية الفنية">التربية الفنية</option><option value="التربية الموسيقية">التربية الموسيقية</option></select>
+        
+        <div style="display:flex; gap:5px; align-items:center; margin-bottom:5px;">
+            <input id="new-std-name" type="text" placeholder="الاسم رباعي (حروف فقط)" style="margin:0;">
+            <button class="voice-btn-inline" id="btn-voice-add" onclick="toggleAddVoice()" style="width:40px; height:36px;" title="انطق الاسم للإضافة بالصوت"><i class="fa fa-microphone"></i></button>
+        </div>
+
+        <div style="display:flex; gap:5px;"><select id="add-gender" class="sel-box" style="padding:6px; margin:0;"><option value="M">ولد</option><option value="F">بنت</option></select><select id="add-rel" class="sel-box" style="padding:6px; margin:0;"><option value="مسلم">مسلم</option><option value="مسيحي">مسيحي</option></select><select id="add-sts" class="sel-box" style="padding:6px; margin:0;"><option value="مستجد">مستجد</option><option value="باق للإعادة">باق</option><option value="منقول">منقول</option><option value="دمج">دمج</option></select></div>
+        <div class="popup-btns"><button class="p-btn b-save" onclick="addStudent()">حفظ وإضافة</button><button class="p-btn b-exit" onclick="closeModal('mod-add')">إغلاق</button></div>
+    </div></div>
+
+    <div id="mod-opt" class="overlay"><div class="popup">
+        <h3>خيارات الطالب</h3>
+        <input id="edit-name" type="text" placeholder="اسم الطالب">
+        <div style="display:flex; gap:5px;"><select id="edit-gender" class="sel-box" style="padding:6px; margin:0;"><option value="M">ولد</option><option value="F">بنت</option></select><select id="edit-rel" class="sel-box" style="padding:6px; margin:0;"><option value="مسلم">مسلم</option><option value="مسيحي">مسيحي</option></select><select id="edit-sts" class="sel-box" style="padding:6px; margin:0;"><option value="مستجد">مستجد</option><option value="باق للإعادة">باق</option><option value="منقول">منقول</option><option value="دمج">دمج</option></select></div>
+        <input type="hidden" id="edit-id">
+        <div class="popup-btns"><button class="p-btn b-blue" onclick="updName()">تعديل</button><button class="p-btn b-red" onclick="delStd()">حذف نهائي</button></div>
+        <button class="p-btn b-exit" style="width:100%; margin-top:8px" onclick="closeModal('mod-opt')">إلغاء</button>
+    </div></div>
+
+    <div id="mod-sort" class="overlay"><div class="popup" style="max-width: 450px;"><h3 style="color:var(--primary); margin-top:0;"><i class="fa fa-sort-alpha-down"></i> الترتيب الأبجدي</h3><select id="sort-type" class="sel-box" style="margin-bottom:10px; padding:6px;" onchange="toggleGenderList()"><option value="all">ترتيب أبجدي عادي (الكل معاً)</option><option value="girls_first">البنات أولاً ثم البنين</option><option value="boys_first">البنين أولاً ثم البنات</option></select><div id="gender-selection-list" style="display:none; max-height: 250px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;"></div><div class="popup-btns"><button class="p-btn b-save" onclick="executeSort()"><i class="fa fa-check"></i> تنفيذ الترتيب</button><button class="p-btn b-exit" onclick="closeModal('mod-sort')">إلغاء</button></div></div></div>
+    <div id="mod-weeks" class="overlay"><div class="popup"><h3><i class="fa fa-calendar-week"></i> إدارة أسابيع التقييم</h3><div style="background:#f4f6f8; padding:15px; border-radius:10px; margin-bottom:10px;"><h1 style="margin:5px 0; color:var(--primary); font-size:35px;" id="current-wks-count">4</h1></div><div class="popup-btns"><button class="p-btn b-save" onclick="addWeek()"><i class="fa fa-plus"></i> إضافة أسبوع</button><button class="p-btn b-red" onclick="removeWeek()"><i class="fa fa-trash"></i> حذف الأخير</button></div><button class="p-btn b-exit" style="width:100%; margin-top:10px" onclick="closeModal('mod-weeks')">إغلاق</button></div></div>
+    
+    <div id="mod-save-options" class="overlay"><div class="popup"><h3><i class="fa fa-cogs"></i> خيارات الحفظ</h3><button class="p-btn b-save" style="margin-bottom:10px; width:100%; padding:10px;" onclick="closeModal('mod-save-options'); saveData(true);"><i class="fa fa-save"></i> حفظ درجات الدفتر</button><button class="p-btn b-purple" style="margin-bottom:10px; width:100%; padding:10px;" onclick="restoreData()"><i class="fa fa-cloud-download-alt"></i> استرجاع الدفتر من السحابة</button><button class="p-btn b-blue" style="margin-bottom:10px; width:100%; padding:10px;" onclick="openEditProfileModal()"><i class="fa fa-user-edit"></i> تعديل بيانات المعلم</button><button class="p-btn b-exit" style="width:100%; padding:10px;" onclick="closeModal('mod-save-options')">إلغاء</button></div></div>
+    
+    <div id="mod-edit-profile" class="overlay"><div class="popup"><h3 style="color:var(--primary); margin-top:0;"><i class="fa fa-user-edit"></i> بيانات المعلم</h3><input type="text" id="ep-name" placeholder="الاسم رباعي"><input type="number" id="ep-code" placeholder="كود المعلم"><input type="text" id="ep-sub" placeholder="المادة"><select id="ep-title" style="padding:6px;"><option value="معلم مساعد">معلم مساعد</option><option value="معلم">معلم</option><option value="معلم اول">معلم أول</option><option value="معلم اول أ">معلم أول أ</option><option value="معلم خبير">معلم خبير</option><option value="معلم كبير">معلم كبير</option></select><input type="text" id="ep-sch" placeholder="اسم المدرسة"><input type="password" id="ep-pin" placeholder="الباسورد (4 أرقام)" maxlength="4"><div class="popup-btns"><button class="p-btn b-save" onclick="saveProfileData()">حفظ التعديلات</button><button class="p-btn b-exit" onclick="closeModal('mod-edit-profile')">إلغاء</button></div></div></div>
+    
+    <div id="mod-stats" class="overlay"><div class="popup" style="max-width: 400px;"><h3><i class="fa fa-chart-pie"></i> تقرير الإحصائيات</h3><p id="stats-subtitle" style="font-size:12px; color:#777; font-weight:bold; margin:0 0 5px 0;"></p><div id="stats-content" class="stats-box"></div><button class="p-btn b-exit" style="width:100%; margin-top:10px" onclick="closeModal('mod-stats')">إغلاق</button></div></div>
+    
+    <div id="mod-bulk" class="overlay"><div class="popup"><h3><i class="fa fa-users"></i> لصق أو استيراد أسماء</h3>
+        <div style="display:flex; gap:5px; margin-bottom:5px;"><select id="bulk-grade" class="sel-box" style="padding:6px;"><option>الأول الإعدادي</option><option>الثاني الإعدادي</option><option>الثالث الإعدادي</option></select><select id="bulk-class" class="sel-box" style="padding:6px;"></select></div>
+        <select id="bulk-subject" class="sel-box" style="margin-bottom:5px; padding:6px;"><option value="all" style="color:var(--red); font-weight:bold;">لكل المواد (دفعة واحدة)</option><option value="اللغة العربية">اللغة العربية</option><option value="اللغة الإنجليزية">اللغة الإنجليزية</option><option value="الدراسات الاجتماعية">الدراسات الاجتماعية</option><option value="الرياضيات">الرياضيات</option><option value="العلوم">العلوم</option><option value="التربية الدينية">التربية الدينية</option><option value="التربية الفنية">التربية الفنية</option><option value="التربية الموسيقية">التربية الموسيقية</option></select>
+        <div style="display:flex; gap:5px; margin-bottom:5px;"><select id="bulk-gender" class="sel-box" style="padding:6px; margin:0;"><option value="M">كلهم بنين</option><option value="F">كلهم بنات</option></select><select id="bulk-rel" class="sel-box" style="padding:6px; margin:0;"><option value="مسلم">مسلم</option><option value="مسيحي">مسيحي</option></select><select id="bulk-sts" class="sel-box" style="padding:6px; margin:0;"><option value="مستجد">مستجد</option><option value="باق للإعادة">باق</option><option value="دمج">دمج</option></select></div>
+        <div style="background: #e8f4f8; padding: 6px; border-radius: 8px; margin-bottom: 5px; border: 1px dashed var(--blue);"><div style="display:flex; gap:5px;"><select id="import-source-sub" class="sel-box" style="margin:0; padding:6px;"><option value="">-- اختر مادة للجلب --</option><option value="اللغة العربية">اللغة العربية</option><option value="اللغة الإنجليزية">اللغة الإنجليزية</option><option value="الدراسات الاجتماعية">الدراسات الاجتماعية</option><option value="الرياضيات">الرياضيات</option><option value="العلوم">العلوم</option><option value="التربية الدينية">التربية الدينية</option><option value="التربية الفنية">التربية الفنية</option><option value="التربية الموسيقية">التربية الموسيقية</option></select><button class="p-btn b-blue" style="margin:0; padding:6px; flex: 0.5;" onclick="importNamesToTextarea()"><i class="fa fa-download"></i> جلب</button></div></div>
+        <textarea id="bulk-names" rows="3" placeholder="محمد أحمد&#10;علي محمود"></textarea>
+        <div class="popup-btns"><button class="p-btn b-save" onclick="addBulkStudents()">حفظ القائمة</button><button class="p-btn b-exit" onclick="closeModal('mod-bulk')">إلغاء</button></div>
+    </div></div>
+    
+    <div id="mod-fast" class="overlay">
+        <div class="popup">
+            <h3><i class="fa fa-bolt"></i> رصد سريع</h3>
+            <div style="text-align:right; font-size:12px; margin-bottom:10px; padding:8px; background:#e8f8f5; border-radius:8px; border:1px dashed var(--teal);">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="fs-is-test" style="width:16px; height:16px; margin:0;" onchange="toggleFastMode()"> 
+                    <strong style="color:var(--teal)">رصد اختبار الشهر (15)</strong>
+                </label>
+            </div>
+            
+            <div id="fs-normal-opts" style="display:flex; gap:5px; margin-bottom:10px;">
+                <select id="fs-w" class="sel-box" style="padding:6px;"></select>
+                <select id="fs-t" class="sel-box" style="padding:6px;">
+                    <option value="h">واجب (10)</option><option value="q">تقييم (20)</option><option value="b">سلوك (10)</option>
+                </select>
+            </div>
+            
+            <div id="fs-test-opts" style="display:none; margin-bottom:10px;">
+                <select id="fs-test-m" class="sel-box" style="padding:6px;">
+                    <option value="سبتمبر">سبتمبر</option><option value="أكتوبر">أكتوبر</option><option value="نوفمبر">نوفمبر</option><option value="ديسمبر">ديسمبر</option><option value="فبراير">فبراير</option><option value="مارس">مارس</option><option value="أبريل">أبريل</option><option value="مايو">مايو</option>
+                </select>
+            </div>
+            
+            <button class="p-btn b-fast" style="width:100%; color:black; padding:8px;" onclick="startFast()">ابدأ الرصد</button>
+            <button class="p-btn b-save" id="btn-fill-max" style="width:100%; margin-top:8px; padding:8px;" onclick="fillMaxGrades()"><i class="fa fa-check-double"></i> الدرجة النهائية للجميع</button>
+            
+            <div id="fast-ui" style="display:none; margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+                <h3 id="fs-name" style="color:var(--primary); margin-bottom:5px;"></h3>
+                
+                <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin: 10px 0;">
+                    <input id="fs-val" type="text" style="font-size:24px; width:100px; height:45px; border:2px solid var(--gold); margin:0;" placeholder="الدرجة">
+                    <button class="voice-btn-inline" id="btn-voice-fast" onclick="toggleFastVoice()" style="width:45px; height:45px;" title="تشغيل המايك للرصد المستمر"><i class="fa fa-microphone" style="font-size:20px;"></i></button>
+                </div>
+                
+                <div id="fs-hint" style="font-size:10px; color:#777">اكتب الرقم أو انطق الدرجة بالصوت للانتقال للتالي</div>
+                <button class="p-btn b-blue" style="width:100%; margin-top:10px; padding:8px;" onclick="backToFastMenu()">إنهاء الحفظ والرجوع</button>
+            </div>
+            
+            <div class="popup-btns" id="fast-cancel-btn">
+                <button class="p-btn b-exit" onclick="closeModal('mod-fast')">إغلاق</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="mod-trans" class="overlay"><div class="popup"><h3><i class="fa fa-exchange-alt"></i> ترحيل الدرجات</h3><select id="trans-from" class="sel-box" style="padding:8px;"><option value="أكتوبر">من: أكتوبر</option><option value="نوفمبر">من: نوفمبر</option><option value="ديسمبر">من: ديسمبر</option><option value="فبراير">من: فبراير</option><option value="مارس">من: مارس</option><option value="أبريل">من: أبريل</option><option value="مايو">من: مايو</option></select><select id="trans-to" class="sel-box" style="padding:8px;"><option value="أكتوبر">إلى: أكتوبر</option><option value="نوفمبر">إلى: نوفمبر</option><option value="ديسمبر">إلى: ديسمبر</option><option value="فبراير">إلى: فبراير</option><option value="مارس">إلى: مارس</option><option value="أبريل">إلى: أبريل</option><option value="مايو">إلى: مايو</option></select><div class="popup-btns"><button class="p-btn b-save" onclick="executeTransfer()">تنفيذ</button><button class="p-btn b-exit" onclick="closeModal('mod-trans')">إلغاء</button></div></div></div>
+    
+    <div id="mod-reset" class="overlay"><div class="popup"><h3 style="color:var(--red)"><i class="fa fa-eraser"></i> تصفير شهر</h3><div style="text-align:right; font-size:12px; margin-bottom:10px; padding:8px; background:#e8f8f5; border-radius:8px;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="keep-absent" style="width:18px; height:18px; margin:0;" checked> <strong>الاحتفاظ بالغياب</strong></label></div><input type="password" id="reset-pin" placeholder="أدخل الكود السري للتأكيد"><div class="popup-btns"><button class="p-btn b-red" onclick="executeReset()">مسح الدرجات</button><button class="p-btn b-exit" onclick="closeModal('mod-reset')">إلغاء</button></div></div></div>
+
+    <script>
+        const SB_URL = 'https://ytrvkwoukjqniaudltvz.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0cnZrd291a2pxbmlhdWRsdHZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNjczODQsImV4cCI6MjA4NTg0MzM4NH0.l6DFg5XtsgpgNiYtIzPIzbSx-bWTFoQss2r_fHocz-I';
+        let sb = null; let USER = null; let DB = {}; let fastTimer = null; 
+        let tempStudentName = "", tempStudentGrade = "", tempStudentClass = "", tempStudentSub = "";
+        let currentConfirmCallback = null;
+        let lastSelectedFastWeek = null; 
+
+        // 🌟 متغيرات المايكروفون 🌟
+        let fastVoiceRec = null;     
+        let isFastVoiceOn = false;
+        
+        let addVoiceRec = null;      
+
+        const allSubjectsList = ["اللغة العربية", "اللغة الإنجليزية", "الدراسات الاجتماعية", "الرياضيات", "العلوم", "التربية الدينية", "التربية الفنية", "التربية الموسيقية", "الكمبيوتر وتكنولوجيا المعلومات", "التربية الرياضية"];
+        const basicSubjects = ["اللغة العربية", "اللغة الإنجليزية", "الدراسات الاجتماعية", "الرياضيات", "العلوم"];
+        const extraSubjects = ["التربية الدينية", "التربية الفنية", "الكمبيوتر وتكنولوجيا المعلومات", "التربية الموسيقية", "التربية الرياضية"];
+
+        window.onload = function() {
+            USER = localStorage.getItem('ACTIVE_USER');
+            if(!USER) { window.location.href = "index.html"; return; }
+            
+            let o=""; for(let i=1;i<=20;i++) o+=`<option value="${i}">فصل ${i}</option>`;
+            document.getElementById('f-class').innerHTML=o; document.getElementById('add-class').innerHTML=o;
+            document.getElementById('bulk-class').innerHTML=o; document.getElementById('clr-class').innerHTML=o;
+            if(window.supabase) try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e){}
+            loadData();
+
+            // 🌟 تفعيل زر Enter في خانة إضافة الطالب 🌟
+            document.getElementById('new-std-name').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    addStudent(); 
+                }
+            });
+        };
+
+        function loadData() {
+            const teacherDataRaw = localStorage.getItem('TEACHER_' + USER);
+            if(!teacherDataRaw) { ForceLogout(); return; }
+            const teacherInfo = JSON.parse(teacherDataRaw);
+            const appDataRaw = localStorage.getItem('APP_DATA_' + USER);
+            
+            if(appDataRaw) { 
+                DB = JSON.parse(appDataRaw); 
+                if(!DB.stds) DB.stds = [];
+                if(!DB.scrs) DB.scrs = [];
+                if(!DB.wks) DB.wks = 4;
+                if(!DB.wDates) DB.wDates = {};
+                
+                if(DB.stds) { DB.stds = DB.stds.filter(s => s.g && s.g.includes('الإعدادي')); }
+                if(DB.scrs && DB.scrs.length > 0) { DB.scrs.forEach(x => { if(!x.sub) x.sub = 'اللغة العربية'; }); }
+                if(DB.stds && DB.stds.length > 0) { 
+                    DB.stds.forEach(s => { 
+                        if(!s.sub) s.sub = 'اللغة العربية'; 
+                        if(!s.gender) s.gender = 'M'; 
+                        if(!s.rel) s.rel = 'مسلم'; 
+                        if(!s.sts) s.sts = 'مستجد'; 
+                        if(!s.mob) s.mob = '';
+                    }); 
+                }
+                
+                if(!DB.flt) DB.flt = {g:'الأول الإعدادي', c:'1', sub:'اللغة العربية'};
+                if(!DB.flt.g || !DB.flt.g.includes('الإعدادي')) DB.flt.g = 'الأول الإعدادي'; 
+                if(!DB.flt.sub) DB.flt.sub = 'اللغة العربية';
+            } else { 
+                DB = { info: { name: teacherInfo.name, mob: teacherInfo.mob, sch: teacherInfo.sch }, stds: [], scrs: [], wks: 4, flt: {g:'الأول الإعدادي', c:'1', sub:'اللغة العربية'}, wDates: {} }; 
+                localStorage.setItem('APP_DATA_' + USER, JSON.stringify(DB)); 
+            }
+
+            if (USER === '1980') {
+                IS_MANAGER = true;
+                document.getElementById('mainBody').classList.add('manager-mode');
+                document.getElementById('app-header').innerHTML = `<span style="color:var(--danger); font-size:12px; background:#ffebee; padding:3px 6px; border-radius:5px;"><i class="fa fa-user-secret"></i> وضع الإدارة (الإعدادية)</span>`;
+                
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    if(el.classList.contains('btn-tile')) el.style.display = 'flex';
+                    else el.style.display = 'block';
+                });
+            } else {
+                document.getElementById('app-header').innerText = `${DB.info.name} | ${DB.info.sch || 'بدون مدرسة'}`;
+            }
+
+            document.getElementById('f-grade').value = DB.flt.g; document.getElementById('f-class').value = DB.flt.c || '1'; document.getElementById('f-subject').value = DB.flt.sub || 'اللغة العربية';
+            
+            render();
+        }
+
+        function generateStats() {
+            const m = document.getElementById('f-month').value; 
+            const sub = document.getElementById('f-subject').value; 
+            
+            const subtitle = document.getElementById('stats-subtitle');
+            if(subtitle) subtitle.innerText = `لمادة (${sub}) | شهر (${m})`;
+            
+            const subStds = (DB.stds || []).filter(s => s.sub === sub && s.g && s.g.includes('الإعدادي'));
+            const content = document.getElementById('stats-content');
+            if (!content) return;
+
+            if (subStds.length === 0) { 
+                content.innerHTML = '<p style="text-align:center; color:red; padding:20px;">لا توجد أسماء مسجلة في هذه المادة حالياً.</p>'; 
+                openModal('mod-stats'); 
+                return; 
+            }
+            
+            const classMap = {}; 
+            subStds.forEach(s => { 
+                const key = `${s.g} - فصل ${s.c}`; 
+                if (!classMap[key]) classMap[key] = []; 
+                classMap[key].push(s); 
+            });
+            
+            let gradedClasses = []; let ungradedClasses = []; let missingCounts = {};
+            for (let cls in classMap) {
+                let classHasScore = false; let missingInThisClass = 0;
+                classMap[cls].forEach(s => { 
+                    const hasScore = (DB.scrs || []).some(x => x.sid === s.id && x.m === m && x.sub === sub); 
+                    if (hasScore) classHasScore = true; else missingInThisClass++; 
+                });
+                if (classHasScore) gradedClasses.push(cls); else ungradedClasses.push(cls);
+                if (missingInThisClass > 0) missingCounts[cls] = missingInThisClass;
+            }
+            
+            let html = `<h4><i class="fa fa-check-circle" style="color:var(--green)"></i> فصول تم الرصد لها:</h4>`;
+            if (gradedClasses.length > 0) html += `<ul>` + gradedClasses.map(c => `<li><span class="badge-green">${c}</span></li>`).join('') + `</ul>`; else html += `<p style="color:#777; font-size:12px; margin-bottom:15px;">لا توجد فصول تم رصدها بعد.</p>`;
+            html += `<h4><i class="fa fa-times-circle" style="color:var(--red)"></i> فصول لم تُرصد نهائياً:</h4>`;
+            if (ungradedClasses.length > 0) html += `<ul>` + ungradedClasses.map(c => `<li><span class="badge-red">${c}</span></li>`).join('') + `</ul>`; else html += `<p style="color:#777; font-size:12px; margin-bottom:15px;">تم البدء في رصد جميع الفصول المسجلة.</p>`;
+            html += `<h4><i class="fa fa-user-times" style="color:var(--orange)"></i> عدد الطلاب الناقصين في الرصد:</h4>`;
+            const missingKeys = Object.keys(missingCounts);
+            if (missingKeys.length > 0) { html += `<ul>`; missingKeys.forEach(cls => { html += `<li>${cls} : <strong style="color:var(--red)">${missingCounts[cls]} طالب</strong></li>`; }); html += `</ul>`; } else { html += `<p style="color:#777; font-size:12px;">تم رصد جميع الطلاب بنجاح (لا يوجد نواقص).</p>`; }
+            
+            content.innerHTML = html; 
+            openModal('mod-stats');
+        }
+
+        // 🌟 دالة عرض الإشعارات (Toasts) بالشكل الطائر الجديد 🌟
+        let toastTimer;
+        function showToast(msg, type='success', duration=3000) { 
+            const t = document.getElementById('custom-toast'); 
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-msg').innerText = msg; 
+            
+            // تغيير الأيقونة بناءً على نوع الرسالة
+            if(type === 'success') icon.className = 'fa fa-check-circle';
+            else if(type === 'error') icon.className = 'fa fa-exclamation-circle';
+            else icon.className = 'fa fa-info-circle';
+
+            t.className = `show ${type}`; 
+            clearTimeout(toastTimer); 
+            toastTimer = setTimeout(() => t.className = '', duration); 
+        }
+        
+        function showCustomConfirm(title, message, callback, btnText = 'نعم', btnClass = 'b-save') {
+            document.getElementById('custom-confirm-title').innerHTML = title; document.getElementById('custom-confirm-msg').innerText = message;
+            const yesBtn = document.getElementById('custom-confirm-btn-yes'); yesBtn.className = `p-btn ${btnClass}`; yesBtn.innerText = btnText; 
+            currentConfirmCallback = callback; openModal('mod-custom-confirm');
+        }
+        function executeCustomConfirm() { if (currentConfirmCallback) { currentConfirmCallback(); } closeModal('mod-custom-confirm'); }
+        
+        function openModal(id) { 
+            document.getElementById(id).style.display='flex'; 
+            if(id=='mod-add') { 
+                document.getElementById('add-grade').value = document.getElementById('f-grade').value; 
+                document.getElementById('add-class').value = document.getElementById('f-class').value; 
+                document.getElementById('add-subject').value = 'all'; 
+                document.getElementById('add-gender').value = 'M';
+                document.getElementById('add-rel').value = 'مسلم';
+                document.getElementById('add-sts').value = 'مستجد';
+                document.getElementById('new-std-name').value=''; document.getElementById('new-std-name').focus(); 
+            } 
+            else if(id=='mod-bulk') { 
+                document.getElementById('bulk-grade').value = document.getElementById('f-grade').value; 
+                document.getElementById('bulk-class').value = document.getElementById('f-class').value; 
+                document.getElementById('bulk-subject').value = 'all'; 
+                document.getElementById('bulk-gender').value = 'M';
+                document.getElementById('bulk-rel').value = 'مسلم';
+                document.getElementById('bulk-sts').value = 'مستجد';
+                document.getElementById('import-source-sub').value = ''; document.getElementById('bulk-names').value=''; document.getElementById('bulk-names').focus(); 
+            }
+            else if(id=='mod-clear') { 
+                document.getElementById('clr-grade').value = document.getElementById('f-grade').value; 
+                document.getElementById('clr-class').value = document.getElementById('f-class').value; 
+                document.getElementById('clr-subject').value = 'all'; 
+                document.getElementById('clr-stds').checked = false; 
+                document.getElementById('clr-pin').value=''; 
+            }
+            else if(id=='mod-reset') { document.getElementById('reset-pin').value=''; document.getElementById('keep-absent').checked = true; }
+        }
+        
+        function closeModal(id) { 
+            document.getElementById(id).style.display='none'; 
+            if(id === 'mod-fast') stopFastVoice();
+            if(id === 'mod-add') stopAddVoice();
+        }
+
+        function switchScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        
+        function openAnalysisModal() {
+            if(!IS_MANAGER) return showToast('هذه الصلاحية للمدير فقط', 'error');
+            document.getElementById('ana-month').value = document.getElementById('f-month').value;
+            generateAnalysis();
+            openModal('mod-analysis');
+        }
+
+        function generateAnalysis() {
+            const grade = document.getElementById('f-grade').value;
+            const cls = document.getElementById('f-class').value;
+            const sub = document.getElementById('f-subject').value;
+            const mth = document.getElementById('ana-month').value;
+
+            const list = (DB.stds || []).filter(s => s.g === grade && s.c === cls && s.sub === sub);
+            
+            document.getElementById('ana-total').innerText = list.length;
+            
+            if(list.length === 0) {
+                document.getElementById('analysis-wrap').innerHTML = '<div style="text-align:center; padding:20px; color:red; font-weight:bold;">لا توجد أسماء في هذا الفصل</div>';
+                document.getElementById('ana-max').innerText = '0';
+                document.getElementById('ana-weak').innerText = '0';
+                document.getElementById('ana-percent').innerText = '0%';
+                return;
+            }
+
+            let maxPossible = 0; let uniqueItems = new Set(); const classStds = list.map(s => s.id);
+            (DB.scrs || []).forEach(x => { 
+                if(classStds.includes(x.sid) && x.sub === sub && x.m === mth && x.v !== '' && x.v !== 'غ' && x.v !== 'م') { 
+                    uniqueItems.add(`${x.w}-${x.t}`); 
+                } 
+            });
+            uniqueItems.forEach(item => { const t = item.split('-')[1]; if(t === 'test') maxPossible += 15; else if(t === 'q') maxPossible += 20; else maxPossible += 10; });
+
+            document.getElementById('ana-max').innerText = maxPossible;
+
+            if (maxPossible === 0) {
+                document.getElementById('analysis-wrap').innerHTML = '<div style="text-align:center; padding:20px; color:var(--orange); font-weight:bold;">لم يتم رصد أي درجات لهذا الفصل في هذا الشهر حتى الآن.</div>';
+                document.getElementById('ana-weak').innerText = '0';
+                document.getElementById('ana-percent').innerText = '0%';
+                return;
+            }
+
+            const passScore = maxPossible / 2;
+            let weakStudents = [];
+
+            list.forEach(st => {
+                let total = 0;
+                (DB.scrs || []).forEach(x => { 
+                    if(x.sid === st.id && x.sub === sub && x.m === mth && x.v !== '' && x.v !== 'غ' && x.v !== 'م') { 
+                        total += parseFloat(x.v);
+                    } 
+                });
+                if(total < passScore) {
+                    weakStudents.push({ name: st.name, score: total, id: st.id });
+                }
+            });
+
+            weakStudents.sort((a,b) => a.score - b.score);
+
+            document.getElementById('ana-weak').innerText = weakStudents.length;
+            let pct = list.length > 0 ? Math.round((weakStudents.length / list.length) * 100) : 0;
+            document.getElementById('ana-percent').innerText = pct + '%';
+
+            let html = `
+            <div class="sheet-page" style="background:white; padding:15px; margin-bottom:20px; border:1px solid #ccc; border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px; font-weight:bold; font-size:13px; border-bottom: 2px solid #333; padding-bottom:10px;">
+                    <div style="text-align:right;">مديرية التربية والتعليم<br>مدرسة: ${DB.info.sch || '................'}</div>
+                    <div style="text-align:center;">
+                        <h3 style="margin:0; color:var(--danger); font-size:20px;">كشف بأسماء الطلاب الضعاف (تحت 50%)</h3>
+                        <p style="margin:5px 0 0 0; font-size:13px;">الصف: ${grade} | فصل: ${cls} | المادة: ${sub} | شهر: ${mth}</p>
+                    </div>
+                    <div style="text-align:left;">معلم المادة<br>${DB.info.name || '................'}</div>
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:14px; text-align:center; border:2px solid #000;">
+                    <thead><tr style="background:#ffebee;"><th style="border:1px solid #000; padding:6px;">م</th><th style="border:1px solid #000; padding:6px; min-width:180px;">اسم الطالب</th><th style="border:1px solid #000; padding:6px;">الدرجة الحاصل عليها</th><th style="border:1px solid #000; padding:6px;">النهاية العظمى للرصد</th><th style="border:1px solid #000; padding:6px;">نسبة الطالب</th></tr></thead><tbody>`;
+            
+            if(weakStudents.length === 0) {
+                html += `<tr><td colspan="5" style="padding:20px; color:var(--success); font-weight:bold; border:1px solid #000;">لا يوجد طلاب ضعاف في هذا الفصل.. مستوى ممتاز! 🎉</td></tr>`;
+            } else {
+                weakStudents.forEach((ws, idx) => {
+                    let spct = Math.round((ws.score / maxPossible) * 100);
+                    html += `<tr><td style="border:1px solid #000; padding:6px;">${idx+1}</td><td style="border:1px solid #000; padding:6px; text-align:right; font-weight:bold; color:var(--primary);">${ws.name}</td><td style="border:1px solid #000; padding:6px; color:var(--danger); font-weight:900; font-size:16px;">${ws.score}</td><td style="border:1px solid #000; padding:6px; font-weight:bold;">${maxPossible}</td><td style="border:1px solid #000; padding:6px; color:var(--danger); font-weight:bold;">${spct}%</td></tr>`;
+                });
+            }
+            
+            html += `</tbody></table>
+            <div style="display:flex; justify-content:space-between; margin-top:30px; font-weight:bold; font-size:14px;">
+                <div>شئون الطلبة<br>.......................</div>
+                <div>يعتمد، مدير المدرسة<br>.......................</div>
+            </div></div>`;
+            
+            document.getElementById('analysis-wrap').innerHTML = html;
+        }
+
+        function openSortModal() {
+            const list = getList();
+            if (list.length === 0) return showToast('لا توجد أسماء لترتيبها!', 'error');
+            document.getElementById('sort-type').value = 'all';
+            document.getElementById('gender-selection-list').style.display = 'none';
+            let html = '<p style="font-size:11px; color:var(--red); margin:0 0 10px 0;">يرجى تحديد نوع الطالب لضبط الترتيب بشكل صحيح:</p>';
+            list.forEach(s => {
+                const isF = (s.gender === 'F') ? 'selected' : ''; const isM = (s.gender !== 'F') ? 'selected' : '';
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding:5px 0;"><span style="font-weight:bold; font-size:13px; color:var(--primary);">${s.name}</span><select id="gndr-${s.id}" class="sel-box" style="width: 80px; padding:4px; font-size:12px; margin:0;"><option value="M" ${isM}>ولد</option><option value="F" ${isF}>بنت</option></select></div>`;
+            });
+            document.getElementById('gender-selection-list').innerHTML = html; openModal('mod-sort');
+        }
+
+        function toggleGenderList() {
+            const type = document.getElementById('sort-type').value;
+            document.getElementById('gender-selection-list').style.display = (type === 'all') ? 'none' : 'block';
+        }
+
+        function executeSort() {
+            const type = document.getElementById('sort-type').value; const list = getList();
+            if (type !== 'all') { list.forEach(s => { const selectVal = document.getElementById(`gndr-${s.id}`).value; s.gender = selectVal; const mainStd = (DB.stds || []).find(x => x.id === s.id); if (mainStd) mainStd.gender = selectVal; }); }
+            const g = document.getElementById('f-grade').value; const c = document.getElementById('f-class').value; const sub = document.getElementById('f-subject').value;
+            let classStds = (DB.stds || []).filter(s => s.g === g && s.c === c && s.sub === sub);
+            let otherStds = (DB.stds || []).filter(s => !(s.g === g && s.c === c && s.sub === sub));
+            classStds.sort((a, b) => {
+                if (type === 'girls_first') { const gA = a.gender || 'M'; const gB = b.gender || 'M'; if (gA === 'F' && gB !== 'F') return -1; if (gA !== 'F' && gB === 'F') return 1; } 
+                else if (type === 'boys_first') { const gA = a.gender || 'M'; const gB = b.gender || 'M'; if (gA === 'M' && gB !== 'M') return -1; if (gA !== 'M' && gB === 'M') return 1; }
+                return a.name.localeCompare(b.name, 'ar');
+            });
+            DB.stds = [...otherStds, ...classStds]; saveData(false); triggerReRender(); closeModal('mod-sort'); showToast('تم الترتيب بنجاح!');
+        }
+
+        function openSaveOptionsModal() { openModal('mod-save-options'); }
+
+        function openEditProfileModal() {
+            closeModal('mod-save-options'); let tDataRaw = localStorage.getItem('TEACHER_' + USER);
+            if(tDataRaw) {
+                let t = JSON.parse(tDataRaw);
+                document.getElementById('ep-name').value = t.name || ''; document.getElementById('ep-code').value = t.code || ''; document.getElementById('ep-sub').value = t.sub || ''; document.getElementById('ep-title').value = t.title || 'معلم'; document.getElementById('ep-sch').value = t.sch || ''; document.getElementById('ep-pin').value = t.pin || '';
+                openModal('mod-edit-profile');
+            }
+        }
+
+        function saveProfileData() {
+            let tDataRaw = localStorage.getItem('TEACHER_' + USER); if(!tDataRaw) return; let t = JSON.parse(tDataRaw);
+            let nName = document.getElementById('ep-name').value.trim(); let nCode = document.getElementById('ep-code').value.trim(); let nSub = document.getElementById('ep-sub').value.trim(); let nTitle = document.getElementById('ep-title').value; let nSch = document.getElementById('ep-sch').value.trim(); let nPin = document.getElementById('ep-pin').value.trim();
+            if(!nName || !nCode || !nSub || !nPin) return showToast('الرجاء إكمال البيانات الأساسية', 'error'); if(!/^\d{4}$/.test(nPin)) return showToast('الباسورد يجب أن يكون 4 أرقام فقط', 'error');
+            t.name = nName; t.code = nCode; t.sub = nSub; t.title = nTitle; t.sch = nSch; t.pin = nPin;
+            localStorage.setItem('TEACHER_' + USER, JSON.stringify(t)); DB.info.name = nName; DB.info.sch = nSch; document.getElementById('app-header').innerText = `${nName} | ${nSch || 'بدون مدرسة'}`; saveData(false); closeModal('mod-edit-profile'); showToast('تم تحديث البيانات بنجاح!'); triggerReRender(); 
+        }
+
+        function openSheet() { render(); switchScreen('scr-sheet'); }
+        function openTermSheet() { renderTermSheet(); switchScreen('scr-term'); }
+        function openPrintModal(source = null) { if(source === 'sheet') openSheet(); else if(source === 'term') openTermSheet(); openModal('mod-print'); }
+        function triggerReRender() { if (document.getElementById('scr-sheet').classList.contains('active')) render(); else if (document.getElementById('scr-term').classList.contains('active')) renderTermSheet(); }
+
+        function updateTableScale() {
+            const scale = document.getElementById('print-scale-input').value;
+            const nameWidth = document.getElementById('print-name-width-input').value;
+            document.getElementById('scale-val').innerText = scale; document.getElementById('name-width-val').innerText = nameWidth;
+            let styleEl = document.getElementById('dynamic-print-style'); const factor = scale / 100;
+            styleEl.innerHTML = `.table-wrap th, .table-wrap td { font-size: ${12 * factor}px !important; padding: ${2 * factor}px !important; } .table-wrap .v-head { height: ${60 * factor}px !important; } .table-wrap .v-text-inner { font-size: ${12 * factor}px !important; } .table-wrap input.score { font-size: ${14 * factor}px !important; } .table-wrap .term-col { font-size: ${15 * factor}px !important; } .sticky-col { min-width: ${nameWidth}px !important; max-width: ${nameWidth}px !important; padding-right: 5px !important; padding-left: 5px !important;}`;
+        }
+        
+        function openCertScreen() { 
+            const grade = document.getElementById('f-grade').value; const cls = document.getElementById('f-class').value;
+            const uniqueNames = new Set(); (DB.stds || []).filter(s => s.g === grade && s.c === cls).forEach(s => uniqueNames.add(s.name));
+            const sel = document.getElementById('cert-student-sel'); 
+            if(sel) { let opts = '<option value="all">طباعة جميع طلاب الفصل</option>'; uniqueNames.forEach(name => { opts += `<option value="${name}">${name}</option>`; }); sel.innerHTML = opts; }
+            renderCertificates(); switchScreen('scr-cert'); 
+        }
+
+        function openAppreciationScreen() {
+            const list = getList(); const sel = document.getElementById('apprec-student-sel'); 
+            if(sel) { let opts = '<option value="all">لجميع طلاب الفصل</option>'; list.forEach(s => { opts += `<option value="${s.name}">${s.name}</option>`; }); sel.innerHTML = opts; }
+            renderAppreciation(); switchScreen('scr-appreciation');
+        }
+
+        function backToMenu() { switchScreen('scr-menu'); }
+        function logout() { showCustomConfirm('<i class="fa fa-sign-out-alt"></i> تسجيل الخروج', 'هل تريد فعلاً تسجيل الخروج والعودة لشاشة الدخول؟', () => { ForceLogout(); }, 'نعم، تسجيل خروج', 'b-red'); }
+        function ForceLogout() { localStorage.removeItem('ACTIVE_USER'); window.location.href = "index.html"; }
+
+        async function saveData(notify) {
+            DB.flt.g = document.getElementById('f-grade').value; 
+            DB.flt.c = document.getElementById('f-class').value; 
+            DB.flt.sub = document.getElementById('f-subject').value;
+            const list = getList(); let missing = false;
+            list.forEach(s => { 
+                for(let w=1; w<=(DB.wks || 4); w++) ['h','q','b'].forEach(t => { 
+                    const el = document.getElementById(`in-${s.id}-${w}-${t}`); 
+                    if(el && el.value === '') { el.classList.add('empty-alert'); missing=true; } 
+                    else if(el) el.classList.remove('empty-alert'); 
+                }); 
+                const tel = document.getElementById(`in-${s.id}-test-test`); 
+                if(tel && tel.value === '') { tel.classList.add('empty-alert'); missing=true; } 
+                else if(tel) tel.classList.remove('empty-alert');
+            });
+            
+            localStorage.setItem('APP_DATA_' + USER, JSON.stringify(DB));
+            
+            if(document.getElementById('online-check').checked && sb) { 
+                try { 
+                    if(notify) showToast('جاري الرفع للسحابة...', 'success');
+                    const { error } = await sb.from('backups').upsert({ mobile: USER, school_data: DB }, { onConflict: 'mobile' });
+                    if (error) {
+                        console.error("Supabase Error:", error);
+                        if(notify) showToast('خطأ السحابة: ' + error.message, 'error');
+                    } else {
+                        if(notify) showToast('تم الحفظ (محلي وسحابي) بنجاح');
+                    }
+                } catch(e) {
+                    console.error("Catch Error:", e);
+                    if(notify) showToast('خطأ في الاتصال بالإنترنت', 'error');
+                } 
+            } else { 
+                if(notify) showToast('تم الحفظ محلياً بنجاح'); 
+            }
+        }
+
+        async function restoreData() {
+            if(!sb) return showToast('السحابة غير متصلة', 'error');
+            showToast('جاري البحث عن نسختك...', 'success');
+            try {
+                const { data, error } = await sb.from('backups').select('school_data').eq('mobile', USER).single();
+                if (error || !data) {
+                    showToast('لم يتم العثور على نسخة برقمك (' + USER + ')', 'error');
+                    return;
+                }
+                showCustomConfirm('<i class="fa fa-cloud-download-alt"></i> استرجاع البيانات', 'تم العثور على نسخة احتياطية.\nهل تريد استرجاعها الآن واستبدال بيانات الهاتف؟', () => {
+                    DB = data.school_data;
+                    localStorage.setItem('APP_DATA_' + USER, JSON.stringify(DB));
+                    closeModal('mod-save-options');
+                    triggerReRender(); 
+                    showToast('تم الاسترجاع بنجاح!', 'success');
+                }, 'نعم، استرجع', 'b-purple');
+            } catch(e) {
+                showToast('حدث خطأ في الاتصال بالسحابة', 'error');
+            }
+        }
+
+        function getList() { 
+            const g = document.getElementById('f-grade').value; const c = document.getElementById('f-class').value; const sub = document.getElementById('f-subject').value; const relFilter = document.getElementById('f-religion');
+            let list = (DB.stds || []).filter(s => s.g === g && s.c === c && s.sub === sub);
+            if (sub === 'التربية الدينية' && relFilter && relFilter.style.display !== 'none' && relFilter.value !== 'all') { list = list.filter(s => (s.rel || 'مسلم') === relFilter.value); }
+            return list;
+        }
+
+        function importNamesToTextarea() {
+            const sourceSub = document.getElementById('import-source-sub').value;
+            if (!sourceSub) return showToast('الرجاء اختيار المادة المراد الجلب منها', 'error');
+            const grade = document.getElementById('bulk-grade').value;
+            const cls = document.getElementById('bulk-class').value;
+            const sourceStds = (DB.stds || []).filter(s => s.g === grade && s.c === cls && s.sub === sourceSub);
+            if (sourceStds.length === 0) return showToast('لا توجد أسماء في هذه المادة لنسخها', 'error');
+            const names = sourceStds.map(s => s.name).join('\n');
+            document.getElementById('bulk-names').value = names;
+            showToast('تم جلب الأسماء بنجاح', 'success');
+        }
+
+        function addBulkStudents() {
+            const text = document.getElementById('bulk-names').value; if(!text.trim()) return showToast('القائمة فارغة!', 'error');
+            const lines = text.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+            const g = document.getElementById('bulk-grade').value; const c = document.getElementById('bulk-class').value; const sub = document.getElementById('bulk-subject').value;
+            
+            const selectedGender = document.getElementById('bulk-gender').value; 
+            const selectedRel = document.getElementById('bulk-rel').value; 
+            const selectedStatus = document.getElementById('bulk-sts').value;
+            
+            const targetSubjects = sub === 'all' ? allSubjectsList : [sub];
+            let addedCount = 0; let skipCount = 0;
+            lines.forEach(name => {
+                if(/[\d]/.test(name) && !/[a-zA-Z\u0600-\u06FF]/.test(name)) { skipCount++; return; }
+                let addedAtLeastOnce = false;
+                targetSubjects.forEach(s => { 
+                    const exists = (DB.stds || []).find(st => st.name === name && st.g === g && st.c === c && st.sub === s); 
+                    if(!exists) { DB.stds.push({ id: Date.now() + Math.floor(Math.random() * 10000000), name: name, g: g, c: c, sub: s, gender: selectedGender, rel: selectedRel, sts: selectedStatus, mob: '' }); addedAtLeastOnce = true; } 
+                });
+                if(addedAtLeastOnce) addedCount++; else skipCount++;
+            });
+            document.getElementById('f-grade').value = g; document.getElementById('f-class').value = c; if(sub !== 'all') document.getElementById('f-subject').value = sub;
+            saveData(false); triggerReRender(); closeModal('mod-bulk'); showToast(`تمت إضافة ${addedCount} طالب بنجاح`);
+        }
+
+        // 🌟 دالة التعرف على الصوت لإضافة طالب 🌟
+        function toggleAddVoice() {
+            if (!('webkitSpeechRecognition' in window)) return showToast("متصفحك لا يدعم خاصية الصوت", "error");
+            const btn = document.getElementById('btn-voice-add');
+
+            if (addVoiceRec) {
+                stopAddVoice();
+                showToast('تم إيقاف الميكروفون', 'info');
+                return;
+            }
+
+            addVoiceRec = new webkitSpeechRecognition();
+            addVoiceRec.lang = 'ar-EG';
+            addVoiceRec.interimResults = false;
+
+            addVoiceRec.onstart = function() {
+                btn.classList.add('recording');
+                showToast('جاري الاستماع... انطق اسم الطالب', 'info');
+            };
+
+            addVoiceRec.onresult = function(event) {
+                const transcript = event.results[0][0].transcript.trim();
+                document.getElementById('new-std-name').value = transcript;
+                showToast('تم التقاط الاسم، اضغط Enter للحفظ', 'success');
+            };
+
+            addVoiceRec.onerror = function(e) { console.error("Voice Error:", e.error); };
+            
+            addVoiceRec.onend = function() {
+                stopAddVoice();
+            };
+
+            addVoiceRec.start();
+        }
+
+        function stopAddVoice() {
+            if(addVoiceRec) {
+                addVoiceRec.stop();
+                addVoiceRec = null;
+            }
+            const btn = document.getElementById('btn-voice-add');
+            if(btn) btn.classList.remove('recording');
+        }
+
+        // 🌟 دالة الإضافة مع التحقق من التكرار 🌟
+        function addStudent() {
+            const n = document.getElementById('new-std-name').value.trim(); 
+            if(!n || /[\d]/.test(n)) return showToast('الاسم غير صالح', 'error');
+            
+            const g = document.getElementById('add-grade').value; 
+            const c = document.getElementById('add-class').value; 
+            const sub = document.getElementById('add-subject').value;
+            
+            const selectedGender = document.getElementById('add-gender').value; 
+            const selectedRel = document.getElementById('add-rel').value; 
+            const selectedStatus = document.getElementById('add-sts').value; 
+
+            // التحقق من التكرار في نفس الفصل
+            let isDuplicate = false;
+            if (sub === 'all') {
+                isDuplicate = (DB.stds || []).some(s => s.name === n && s.g === g && s.c === c);
+            } else {
+                isDuplicate = (DB.stds || []).some(s => s.name === n && s.g === g && s.c === c && s.sub === sub);
+            }
+
+            if(isDuplicate) { 
+                document.getElementById('new-std-name').blur(); // إزالة التركيز لمنع تكرار الضغط
+                tempStudentName = n; tempStudentGrade = g; tempStudentClass = c; tempStudentSub = sub; 
+                showCustomConfirm('⚠️ اسم مكرر', `الطالب "${n}" مسجل بالفعل في هذا الفصل!\nهل أنت متأكد أنك تريد إضافة طالب آخر يحمل نفس الاسم؟`, () => { 
+                    executeAdd(tempStudentName, tempStudentGrade, tempStudentClass, tempStudentSub, selectedGender, selectedRel, selectedStatus); 
+                }, 'نعم، إضافة كطالب جديد', 'b-orange'); 
+                return; 
+            }
+
+            executeAdd(n, g, c, sub, selectedGender, selectedRel, selectedStatus);
+        }
+
+        function executeAdd(name, g, c, sub, gender, rel, sts) { 
+            if (sub === 'all') {
+                allSubjectsList.forEach(s => { 
+                    const exists = (DB.stds || []).find(st => st.name === name && st.g === g && st.c === c && st.sub === s); 
+                    if(!exists) DB.stds.push({id: Date.now() + Math.floor(Math.random() * 10000), name: name, g: g, c: c, sub: s, gender: gender, rel: rel, sts: sts, mob: ''}); 
+                });
+                showToast('تمت الإضافة لكل المواد', 'success');
+            } else {
+                DB.stds.push({id:Date.now() + Math.floor(Math.random() * 10000), name:name, g:g, c:c, sub:sub, gender: gender, rel: rel, sts: sts, mob: ''}); 
+                showToast('تم إضافة الطالب بنجاح', 'success');
+            }
+            
+            document.getElementById('f-grade').value=g; 
+            document.getElementById('f-class').value=c; 
+            if (sub !== 'all') document.getElementById('f-subject').value=sub; 
+            
+            saveData(false); 
+            triggerReRender(); 
+            
+            const nameInput = document.getElementById('new-std-name');
+            nameInput.value = ''; 
+            
+            // إعادة التركيز إذا كانت النافذة مفتوحة
+            if (document.getElementById('mod-add').style.display !== 'none') {
+                nameInput.focus(); 
+            }
+        }
+        
+        function showOpt(id) { 
+            const s = (DB.stds || []).find(x => x.id == id); if(!s) return;
+            document.getElementById('edit-id').value = id; document.getElementById('edit-name').value = s.name; 
+            const gndr = s.gender || 'M'; const rel = s.rel || 'مسلم'; const sts = s.sts || 'مستجد';
+            
+            document.getElementById('edit-gender').value = gndr;
+            document.getElementById('edit-rel').value = rel;
+            document.getElementById('edit-sts').value = sts;
+            
+            openModal('mod-opt'); 
+        }
+
+        function updName() { 
+            const id = document.getElementById('edit-id').value; const n = document.getElementById('edit-name').value.trim(); 
+            const gndr = document.getElementById('edit-gender').value; 
+            const rel = document.getElementById('edit-rel').value; 
+            const sts = document.getElementById('edit-sts').value;
+            
+            if(!n || /[\d]/.test(n)) return showToast('الاسم غير صحيح', 'error'); 
+            const s = (DB.stds || []).find(x=>x.id==id); 
+            if(s){ s.name = n; s.gender = gndr; s.rel = rel; s.sts = sts; saveData(false); triggerReRender(); closeModal('mod-opt'); showToast('تم التعديل بنجاح'); } 
+        }
+
+        function delStd() { closeModal('mod-opt'); showCustomConfirm('<i class="fa fa-user-minus"></i> حذف طالب', 'تأكيد حذف هذا الطالب بجميع درجاته من هذه المادة فقط؟\nلا يمكن التراجع عن هذا الإجراء.', () => { const id=document.getElementById('edit-id').value; DB.stds=(DB.stds || []).filter(x=>x.id!=id); DB.scrs=(DB.scrs || []).filter(x=>x.sid!=id); saveData(false); triggerReRender(); showToast('تم الحذف بنجاح'); }, 'نعم، احذف الطالب', 'b-red'); }
+        
+        function openWeeksManager() { document.getElementById('current-wks-count').innerText = DB.wks || 4; openModal('mod-weeks'); }
+        function addWeek() { DB.wks = (DB.wks || 4) + 1; saveData(false); triggerReRender(); document.getElementById('current-wks-count').innerText = DB.wks; showToast('تمت إضافة أسبوع جديد بنجاح'); }
+        function removeWeek() {
+            if ((DB.wks || 4) <= 1) return showToast('لا يمكن حذف الأسبوع الأول!', 'error');
+            showCustomConfirm('<i class="fa fa-trash"></i> حذف أسبوع', `هل أنت متأكد من حذف الأسبوع رقم (${DB.wks}) بالكامل؟\nملاحظة: سيتم مسح جميع الدرجات المرصودة في هذا الأسبوع بشكل نهائي.`, () => { DB.scrs = (DB.scrs || []).filter(x => parseInt(x.w) !== DB.wks); DB.wks--; saveData(false); triggerReRender(); document.getElementById('current-wks-count').innerText = DB.wks; showToast(`تم حذف الأسبوع بنجاح`); }, 'نعم، احذف الأسبوع الأخير', 'b-red');
+        }
+
+        function executeTransfer() {
+            const fromM = document.getElementById('trans-from').value; const toM = document.getElementById('trans-to').value; const sub = document.getElementById('f-subject').value;
+            if(fromM === toM) return showToast('اختر شهرين مختلفين', 'error');
+            const cStds = getList().map(s=>s.id); const toCopy = (DB.scrs || []).filter(x => cStds.includes(x.sid) && x.m === fromM && x.sub === sub);
+            toCopy.forEach(x => { DB.scrs = (DB.scrs || []).filter(e => !(e.sid===x.sid && e.w===x.w && e.t===x.t && e.m===toM && e.sub===sub)); DB.scrs.push({sid:x.sid, w:x.w, t:x.t, v:x.v, m:toM, sub:sub}); });
+            saveData(true); closeModal('mod-trans'); document.getElementById('f-month').value = toM; triggerReRender(); showToast(`تم النسخ إلى ${toM}`);
+        }
+        function executeReset() {
+            if(document.getElementById('reset-pin').value !== '0000') return showToast('الكود السري غير صحيح!', 'error');
+            const m = document.getElementById('f-month').value; const sub = document.getElementById('f-subject').value; const cStds = getList().map(s=>s.id);
+            const keepAbsent = document.getElementById('keep-absent').checked;
+            if (keepAbsent) { DB.scrs = (DB.scrs || []).filter(x => { const isTarget = cStds.includes(x.sid) && x.m === m && x.sub === sub; if (isTarget) { return x.v === 'غ' || x.v === 'م'; } return true; }); showToast(`تم تصفير درجات الشهر بنجاح (مع بقاء الغياب)`); } else { DB.scrs = (DB.scrs || []).filter(x => !(cStds.includes(x.sid) && x.m === m && x.sub === sub)); showToast(`تم تصفير الشهر بالكامل بنجاح`); }
+            saveData(true); closeModal('mod-reset'); triggerReRender(); 
+        }
+
+        function executeClear() {
+            if(document.getElementById('clr-pin').value !== '0000') return showToast('الكود السري غير صحيح!', 'error');
+            const g = document.getElementById('clr-grade').value; const c = document.getElementById('clr-class').value; const sub = document.getElementById('clr-subject').value;
+            const isDeleteStds = document.getElementById('clr-stds').checked;
+
+            if (sub === 'all') {
+                const classStdsIds = (DB.stds || []).filter(s => s.g === g && s.c === c).map(s => s.id);
+                if (classStdsIds.length === 0) return showToast('هذا الفصل فارغ تماماً!', 'error');
+                if (isDeleteStds) {
+                    DB.stds = (DB.stds || []).filter(s => !(s.g === g && s.c === c));
+                    DB.scrs = (DB.scrs || []).filter(x => !classStdsIds.includes(x.sid));
+                    showToast('تم حذف الفصل بطلابه من جميع المواد', 'success');
+                } else {
+                    DB.scrs = (DB.scrs || []).filter(x => !classStdsIds.includes(x.sid));
+                    showToast('تم تفريغ درجات الفصل من جميع المواد', 'success');
+                }
+            } else {
+                const classStdsIds = (DB.stds || []).filter(s => s.g === g && s.c === c && s.sub === sub).map(s => s.id);
+                if (classStdsIds.length === 0) return showToast('هذا الفصل فارغ في هذه المادة!', 'error');
+                if (isDeleteStds) {
+                    DB.stds = (DB.stds || []).filter(s => !(s.g === g && s.c === c && s.sub === sub));
+                    DB.scrs = (DB.scrs || []).filter(x => !(classStdsIds.includes(x.sid) && x.sub === sub));
+                    showToast(`تم مسح الأسماء والدرجات من مادة ${sub}`, 'success');
+                } else {
+                    DB.scrs = (DB.scrs || []).filter(x => !(classStdsIds.includes(x.sid) && x.sub === sub));
+                    showToast(`تم تفريغ درجات مادة ${sub}`, 'success');
+                }
+            }
+            document.getElementById('f-grade').value = g; document.getElementById('f-class').value = c;
+            if(sub !== 'all') document.getElementById('f-subject').value = sub;
+            saveData(true); closeModal('mod-clear'); triggerReRender();
+        }
+
+        function toggleFastMode() {
+            const isTest = document.getElementById('fs-is-test').checked;
+            if (isTest) { document.getElementById('fs-normal-opts').style.display = 'none'; document.getElementById('fs-test-opts').style.display = 'block'; document.getElementById('fs-hint').innerText = 'الحد الأقصى للاختبار (15) - اكتب (غ) للغياب'; } 
+            else { document.getElementById('fs-normal-opts').style.display = 'flex'; document.getElementById('fs-test-opts').style.display = 'none'; document.getElementById('fs-hint').innerText = 'اكتب الرقم أو انطق الدرجة بالصوت للانتقال للتالي'; }
+        }
+
+        function fillMaxGrades() {
+            const isTest = document.getElementById('fs-is-test').checked; let w, t, max, tName, m;
+            if (isTest) { w = 'test'; t = 'test'; max = 15; tName = 'اختبار الشهر'; m = document.getElementById('fs-test-m').value; } 
+            else { w = document.getElementById('fs-w').value; t = document.getElementById('fs-t').value; max = (t=='q') ? 20 : 10; tName = document.getElementById('fs-t').options[document.getElementById('fs-t').selectedIndex].text; m = document.getElementById('f-month').value; lastSelectedFastWeek = w; }
+            closeModal('mod-fast'); 
+            showCustomConfirm('<i class="fa fa-check-double"></i> إعطاء الدرجة النهائية', `هل أنت متأكد من إعطاء الدرجة النهائية (${max}) لجميع طلاب الفصل في خانے (${tName})؟`, () => {
+                getList().forEach(s => setVal(s.id, w, t, String(max), null, true, m)); 
+                if(isTest) document.getElementById('f-month').value = m; 
+                saveData(true); triggerReRender(); showToast('تم التقفيل بنجاح!'); backToFastMenu();
+            }, 'نعم، قم بالتقفيل', 'b-save');
+        }
+
+        let qQ=[], qI=0, qW=1, qT='h', qM='';
+        function openFast() { 
+            qQ=getList(); if(qQ.length==0) return showToast('لا توجد أسماء', 'error'); 
+            qI=0; let o=""; for(let i=1;i<=(DB.wks || 4);i++) { let sel = (lastSelectedFastWeek == i) ? 'selected' : ''; o+=`<option value="${i}" ${sel}>أسبوع ${i}</option>`; }
+            document.getElementById('fs-w').innerHTML=o; document.getElementById('fs-test-m').value = document.getElementById('f-month').value; 
+            openModal('mod-fast'); document.getElementById('fast-ui').style.display='none'; document.getElementById('fast-cancel-btn').style.display='block'; 
+        }
+
+        function startFast() { 
+            const isTest = document.getElementById('fs-is-test').checked; 
+            if (isTest) { qW = 'test'; qT = 'test'; qM = document.getElementById('fs-test-m').value; } 
+            else { qW = document.getElementById('fs-w').value; qT = document.getElementById('fs-t').value; qM = document.getElementById('f-month').value; lastSelectedFastWeek = qW; } 
+
+            if (qW !== 'test' && parseInt(qW) > 1) {
+                let allComplete = true; for (let s of qQ) { if (!isPrevWeekComplete(s.id, qW, qM)) { allComplete = false; break; } }
+                if (!allComplete) { showToast(`لا يمكن بدء رصد الأسبوع ${qW} قبل اكتمال رصد الأسبوع ${parseInt(qW)-1} لجميع الطلاب!`, 'error', 5000); return; }
+            }
+            const listIds = qQ.map(s => s.id); const existingGrades = (DB.scrs || []).filter(x => listIds.includes(x.sid) && x.w == qW && x.t == qT && x.m == qM && x.sub == document.getElementById('f-subject').value && x.v !== '');
+            if (existingGrades.length > 0) { showCustomConfirm('⚠️ تنبيه هام', 'هذا العمود يحتوي على درجات مرصودة مسبقاً لبعض الطلاب.\nهل تريد إعادة فتحه وتعديل الدرجات؟', () => { executeStartFast(); }, 'نعم، فتح للتعديل', 'b-orange'); } else { executeStartFast(); }
+        }
+        function executeStartFast() { qI=0; document.getElementById('fast-ui').style.display='block'; document.getElementById('fast-cancel-btn').style.display='none'; nextFast(); }
+        function backToFastMenu() { document.getElementById('fast-ui').style.display='none'; document.getElementById('fast-cancel-btn').style.display='block'; stopFastVoice(); }
+
+        function nextFast() { 
+            if(qI>=qQ.length) { 
+                if(document.getElementById('fs-is-test').checked) document.getElementById('f-month').value = qM; 
+                showToast('تم الرصد بنجاح لجميع الطلاب'); 
+                triggerReRender(); backToFastMenu(); return; 
+            } 
+            const s=qQ[qI]; document.getElementById('fs-name').innerText=s.name; const valInp = document.getElementById('fs-val'); valInp.value=getVal(s.id, qW, qT, qM); valInp.focus(); valInp.select(); 
+        }
+        
+        document.getElementById('fs-val').addEventListener('input', function(e){ 
+            clearTimeout(fastTimer); const val = e.target.value.trim(); 
+            if(val !== '') { 
+                const max = (qT=='test') ? 15 : ((qT=='q') ? 20 : 10); 
+                if(val !== 'غ' && val !== 'م') { const n = parseFloat(val); if(isNaN(n) || n<0 || n>max) { showToast(`الحد الأقصى (${max})`, 'error', 1000); e.target.value=''; return; } } 
+                fastTimer = setTimeout(() => { setVal(qQ[qI].id, qW, qT, val, null, false, qM); qI++; nextFast(); }, 500); 
+            } 
+        });
+
+        // 🌟 دالة التعرف على الصوت للرصد السريع الأوتوماتيكي 🌟
+        function toggleFastVoice() {
+            if (!('webkitSpeechRecognition' in window)) return showToast("متصفحك لا يدعم خاصية الصوت", "error");
+            const btn = document.getElementById('btn-voice-fast');
+
+            if (isFastVoiceOn) {
+                stopFastVoice();
+                showToast('تم إيقاف الرصد الصوتي', 'info');
+                return;
+            }
+
+            fastVoiceRec = new webkitSpeechRecognition();
+            fastVoiceRec.lang = 'ar-EG';
+            fastVoiceRec.continuous = true; // استماع مستمر
+            fastVoiceRec.interimResults = false;
+
+            fastVoiceRec.onstart = function() {
+                isFastVoiceOn = true;
+                btn.classList.add('recording');
+                showToast('جاري الاستماع... (انطق الدرجة واسكت قليلاً)', 'info');
+            };
+
+            fastVoiceRec.onresult = function(event) {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                console.log("الدرجة المنطوقة:", transcript);
+                
+                let parsedVal = parseVoiceGrade(transcript);
+                if (parsedVal !== null) {
+                    const inputEl = document.getElementById('fs-val');
+                    inputEl.value = parsedVal;
+                    // تفعيل حفظ الدرجة والانتقال للطالب التالي
+                    inputEl.dispatchEvent(new Event('input'));
+                    showToast(`تم رصد: ${parsedVal}`, 'success', 1000);
+                } else {
+                    showToast(`لم أفهم الدرجة: "${transcript}"`, 'error', 1500);
+                }
+            };
+
+            fastVoiceRec.onerror = function(e) { console.error("Voice Error:", e.error); };
+            
+            fastVoiceRec.onend = function() {
+                // لو المدرس ماقفلش المايك بإيده، هيرجع يشتغل تاني أوتوماتيك (للرصد المتواصل)
+                if (isFastVoiceOn) {
+                    try { fastVoiceRec.start(); } catch(e) { stopFastVoice(); }
+                }
+            };
+
+            fastVoiceRec.start();
+        }
+
+        function stopFastVoice() {
+            isFastVoiceOn = false;
+            if(fastVoiceRec) fastVoiceRec.stop();
+            const btn = document.getElementById('btn-voice-fast');
+            if(btn) btn.classList.remove('recording');
+        }
+
+        function parseVoiceGrade(text) {
+            let t = text.replace(/[^a-zA-Z\u0600-\u06FF0-9]/g, '').trim();
+            if (!isNaN(t) && t !== '') return t;
+            
+            // قاموس الأرقام العربي للتحويل
+            const dict = {
+                "صفر":0, "واحد":1, "اتنين":2, "اثنان":2, "اثنين":2, "تلاته":3, "ثلاثة":3, "ثلاثه":3, "اربعه":4, "أربعة":4, "اربعة":4,
+                "خمسه":5, "خمسة":5, "سته":6, "ستة":6, "سبعه":7, "سبعة":7, "تمانيه":8, "ثمانية":8, "ثمانيه":8, "تسعه":9, "تسعة":9,
+                "عشره":10, "عشرة":10, "حداشر":11, "إحدى عشر":11, "اتناشر":12, "اثنا عشر":12,
+                "تلاتاشر":13, "ثلاثة عشر":13, "اربعتاشر":14, "أربعة عشر":14, "خمسطاشر":15, "خمسة عشر":15,
+                "ستاشر":16, "ستة عشر":16, "سبعتاشر":17, "سبعة عشر":17, "تمنتاشر":18, "ثمانية عشر":18,
+                "تسعتاشر":19, "تسعة عشر":19, "عشرين":20, "عشرون":20,
+                "غائب":"غ", "غايب":"غ", "غين":"غ",
+                "معذور":"م", "مريض":"م", "ميم":"م"
+            };
+            
+            for(let key in dict) {
+                if (t.includes(key)) return dict[key].toString();
+            }
+            return null;
+        }
+
+        function getVal(sid, w, t, customMonth=null) { const m = customMonth || document.getElementById('f-month').value; const sub=document.getElementById('f-subject').value; const r = (DB.scrs || []).find(x=>x.sid==sid && x.w==w && x.t==t && x.m==m && x.sub==sub); return r?r.v:''; }
+        
+        function isPrevWeekComplete(sid, currentWeek, currentMonth) {
+            if (currentWeek <= 1 || currentWeek === 'test') return true;
+            const prevW = parseInt(currentWeek) - 1;
+            const h = getVal(sid, prevW, 'h', currentMonth); const q = getVal(sid, prevW, 'q', currentMonth); const b = getVal(sid, prevW, 'b', currentMonth);
+            return (h !== '' && q !== '' && b !== '');
+        }
+
+        function setVal(sid, w, t, v, el, skipSave=false, customMonth=null) {
+            const m = customMonth || document.getElementById('f-month').value; const sub = document.getElementById('f-subject').value;
+            if(w !== 'test' && parseInt(w) > 1 && v !== '') { if(!isPrevWeekComplete(sid, w, m)) { showToast(`لا يمكنك رصد الأسبوع ${w} قبل استكمال الأسبوع ${w-1} لهذا الطالب!`, 'error', 3000); if(el) { el.value = ''; el.classList.add('empty-alert'); } return false; } }
+            if(v !== 'غ' && v !== 'م') { let max = 10; if(t === 'q') max = 20; if(t === 'test') max = 15; const n=parseFloat(v); if(v!=='' && (isNaN(n)||n<0||n>max)) { showToast(`الحد الأقصى (${max})`, 'error', 1000); if(el){el.value=''; el.classList.add('empty-alert');} return false; } }
+            DB.scrs=(DB.scrs || []).filter(x=>!(x.sid==sid && x.w==w && x.t==t && x.m==m && x.sub==sub));
+            if(v!=='') { DB.scrs.push({sid:sid, w:w, t:t, v:v, m:m, sub:sub}); if(el) el.classList.remove('empty-alert'); } else { if(el) el.classList.add('empty-alert'); }
+            if(!skipSave) {
+                saveData(false); let tot=0; for(let k=1; k<=(DB.wks || 4); k++) tot += getNum(getVal(sid,k,'h',m))+getNum(getVal(sid,k,'q',m))+getNum(getVal(sid,k,'b',m));
+                tot += getNum(getVal(sid,'test','test', m)); 
+                const sumEl=document.getElementById(`sum-${sid}`); if(sumEl) sumEl.innerText=tot>0?tot:''; 
+                const avgEl=document.getElementById(`avg-${sid}`); if(avgEl) avgEl.innerText=tot>0?((tot - getNum(getVal(sid,'test','test', m)))/(DB.wks || 4)).toFixed(1):'';
+            }
+            return true;
+        }
+        function getNum(val) { const n=parseFloat(val); return isNaN(n)?0:n; }
+
+        function updateSheetWDate(baseKey, weekIdx, val) {
+            if(!DB.wDates) DB.wDates = {};
+            DB.wDates[`${baseKey}_w${weekIdx}`] = val;
+            saveData(false);
+            showToast('تم حفظ تاريخ الأسبوع', 'success', 1500);
+        }
+
+        function render() {
+            const list=getList(); const box=document.getElementById('sheet-area'); const mth=document.getElementById('f-month').value; const sub=document.getElementById('f-subject').value;
+            const grade = document.getElementById('f-grade').value; const cls = document.getElementById('f-class').value;
+            const baseKey = `${grade}_${cls}_${sub}_${mth}`;
+
+            if(list.length===0) { box.innerHTML='<div style="padding:50px;text-align:center;color:#999;font-weight:bold;">لا يوجد طلاب في هذا الفصل<br>استخدم إضافة طالب أو لصق أسماء</div>'; return; }
+            const wksCount = DB.wks || 4;
+            const sets=Math.ceil(wksCount/4); let h='';
+            for(let p=0; p<sets; p++) {
+                const sW=p*4+1, eW=Math.min((p+1)*4, wksCount), isLast=(p===sets-1);
+                h+=`<div class="sheet-page"><div style="display:flex;justify-content:space-between;margin-bottom:10px;font-weight:bold;font-size:12px;"><div>مدرسة ${(DB.info && DB.info.sch) ? DB.info.sch : '..'}</div><div style="text-align:center; color:var(--primary)">سجل ${mth} - مادة: ${sub}<br>2025/2026</div><div>فصل ${document.getElementById('f-class').value}</div></div>
+                <table style="width:100%"><thead><tr><th rowspan="3" style="width:30px">م</th><th rowspan="3" class="sticky-head" style="min-width:150px">الاسم</th>`;
+                
+                for(let w=sW; w<=eW; w++) {
+                    let savedD = (DB.wDates && DB.wDates[`${baseKey}_w${w}`]) ? DB.wDates[`${baseKey}_w${w}`] : '';
+                    h+=`<th colspan="4">أسبوع ${w}<br><input type="date" class="week-date-input" value="${savedD}" onchange="updateSheetWDate('${baseKey}', ${w}, this.value)"></th>`;
+                }
+
+                if(isLast) { h+=`<th rowspan="2" class="v-head test-col">اختبار الشهر</th><th rowspan="3" class="sum-col">المجموع الكلي</th><th rowspan="3" class="avg-col">المتوسط</th>`; }
+                h+=`</tr><tr>`; 
+                for(let w=sW; w<=eW; w++) h+=`<th class="v-head">منزلي</th><th class="v-head">تقييم</th><th class="v-head">سلوك</th><th class="sum-col v-head">مج</th>`; 
+                h+=`</tr><tr>`;
+                for(let w=sW; w<=eW; w++) h+=`<th>10</th><th>20</th><th>10</th><th class="sum-col">40</th>`; 
+                if(isLast) h+= `<th class="test-col">15</th>`; h+=`</tr></thead><tbody>`;
+                list.forEach((st,i)=>{
+                    let badgeHTML = '';
+                    if(st.sts && st.sts !== 'مستجد') { let badgeClass = 'badge-status'; if(st.sts === 'باق للإعادة') badgeClass += ' red'; else if(st.sts === 'دمج') badgeClass += ' purple'; else if(st.sts === 'منقول') badgeClass += ' orange'; badgeHTML = ` <span class="${badgeClass}">${st.sts}</span>`; }
+                    h+=`<tr><td>${i+1}</td><td class="sticky-col" style="cursor:pointer; color:var(--primary);" onclick="showOpt(${st.id})">${st.name} ${badgeHTML}</td>`;
+                    let gTot=0;
+                    for(let w=sW; w<=eW; w++) {
+                        const v1=getVal(st.id,w,'h',mth), v2=getVal(st.id,w,'q',mth), v3=getVal(st.id,w,'b',mth);
+                        const sum=getNum(v1)+getNum(v2)+getNum(v3); if(v1!==''||v2!==''||v3!=='') gTot+=sum;
+                        const cls1 = v1 === '' ? 'empty-alert' : ''; const cls2 = v2 === '' ? 'empty-alert' : ''; const cls3 = v3 === '' ? 'empty-alert' : '';
+                        h+=`<td><input id="in-${st.id}-${w}-h" class="score ${cls1}" type="text" value="${v1}" onchange="setVal(${st.id},${w},'h',this.value,this,false,'${mth}');this.value=getVal(${st.id},${w},'h','${mth}')"></td>
+                            <td><input id="in-${st.id}-${w}-q" class="score ${cls2}" type="text" value="${v2}" onchange="setVal(${st.id},${w},'q',this.value,this,false,'${mth}');this.value=getVal(${st.id},${w},'q','${mth}')"></td>
+                            <td><input id="in-${st.id}-${w}-b" class="score ${cls3}" type="text" value="${v3}" onchange="setVal(${st.id},${w},'b',this.value,this,false,'${mth}');this.value=getVal(${st.id},${w},'b','${mth}')"></td>
+                            <td class="sum-col">${(v1!==''||v2!==''||v3!=='')?sum:''}</td>`;
+                    }
+                    if(isLast) {
+                        let finalTot=0; for(let k=1; k<=wksCount; k++) finalTot+=getNum(getVal(st.id,k,'h',mth))+getNum(getVal(st.id,k,'q',mth))+getNum(getVal(st.id,k,'b',mth));
+                        const mTest = getVal(st.id, 'test', 'test', mth); finalTot += getNum(mTest); 
+                        const clsTest = mTest === '' ? 'empty-alert' : '';
+                        let avg = ((finalTot - getNum(mTest))/wksCount).toFixed(1);
+                        h+=`<td class="test-col"><input id="in-${st.id}-test-test" class="score ${clsTest}" style="color:var(--primary);" type="text" value="${mTest}" onchange="setVal(${st.id},'test','test',this.value,this,false,'${mth}');this.value=getVal(${st.id},'test','test','${mth}')"></td>
+                            <td class="sum-col" id="sum-${st.id}">${finalTot>0?finalTot:''}</td><td class="avg-col" id="avg-${st.id}" style="${avg<20?'color:red':''}">${finalTot>0?avg:''}</td>`;
+                    }
+                    h+=`</tr>`;
+                });
+                h+=`</tbody></table><div style="display:flex;justify-content:space-between;margin-top:20px;font-size:11px;font-weight:bold"><div>معلم المادة<br>${(DB.info && DB.info.name) ? DB.info.name : ''}</div><div>المدير<br>...........</div></div></div>`;
+            }
+            box.innerHTML=h;
+        }
+
+        function renderTermSheet() {
+            const list = getList(); const box = document.getElementById('term-area'); const sub = document.getElementById('f-subject').value; const term = document.getElementById('term-sel').value;
+            const termMonths = term == '1' ? ['سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'] : ['فبراير', 'مارس', 'أبريل', 'مايو'];
+            if(list.length === 0) { box.innerHTML = '<div style="padding:50px;text-align:center;color:#999;font-weight:bold;">لا يوجد طلاب في هذا الفصل</div>'; return; }
+
+            const rowsPerPageInp = document.getElementById('print-rows-input'); const rowsPerPage = rowsPerPageInp ? parseInt(rowsPerPageInp.value) : 30; const studentPages = Math.ceil(list.length / rowsPerPage);
+            let maxPossible = 0; let uniqueItems = new Set(); const classStds = list.map(s => s.id);
+            (DB.scrs || []).forEach(x => { if(classStds.includes(x.sid) && x.sub === sub && termMonths.includes(x.m) && x.v !== '' && x.v !== 'غ' && x.v !== 'م') { uniqueItems.add(`${x.m}-${x.w}-${x.t}`); } });
+            uniqueItems.forEach(item => { const t = item.split('-')[2]; if(t === 'test') maxPossible += 15; else if(t === 'q') maxPossible += 20; else maxPossible += 10; });
+
+            let h = '';
+            for(let sp=0; sp<studentPages; sp++) {
+                const pageStds = list.slice(sp * rowsPerPage, (sp + 1) * rowsPerPage);
+                h += `<div class="sheet-page">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-weight:bold;font-size:14px;">
+                        <div>مدرسة ${(DB.info && DB.info.sch) ? DB.info.sch : '..'}</div><div style="text-align:center; color:var(--primary)">شيت أعمال السنة ونهاية الترم ${term == '1' ? 'الأول' : 'الثاني'}<br>مادة: ${sub}</div><div>فصل ${document.getElementById('f-class').value} - صفحة ${sp+1}</div>
+                    </div>
+                    <div style="font-size:11px; color:#777; margin-bottom:5px; text-align:center;">إجمالي الدرجات المرصودة خلال الترم: <strong style="color:var(--red)">${maxPossible}</strong> | يتم تحويلها تلقائياً من 70</div>
+                    <table style="width:100%"><thead><tr><th style="width:40px">م</th><th style="min-width:200px" class="sticky-head sticky-col">الاسم</th><th>مجموع الأسابيع</th><th>اختبارات الشهور</th><th>الإجمالي (من ${maxPossible})</th><th class="term-col">الدرجة من 70</th></tr></thead><tbody>`;
+
+                pageStds.forEach((st, idxInPage) => {
+                    let actualIndex = (sp * rowsPerPage) + idxInPage;
+                    let weeksTotal = 0; let testsTotal = 0;
+                    (DB.scrs || []).forEach(x => { 
+                        if(x.sid === st.id && x.sub === sub && termMonths.includes(x.m) && x.v !== '' && x.v !== 'غ' && x.v !== 'م') { 
+                            if(x.t === 'test') testsTotal += parseFloat(x.v); else weeksTotal += parseFloat(x.v); 
+                        } 
+                    });
+                    const grandTotal = weeksTotal + testsTotal; let final70 = 0; if(maxPossible > 0) final70 = (grandTotal / maxPossible) * 70;
+                    let badgeHTML = ''; if(st.sts && st.sts !== 'مستجد') { let badgeClass = 'badge-status'; if(st.sts === 'باق للإعادة') badgeClass += ' red'; else if(st.sts === 'دمج') badgeClass += ' purple'; else if(st.sts === 'منقول') badgeClass += ' orange'; badgeHTML = ` <span class="${badgeClass}">${st.sts}</span>`; }
+                    h += `<tr><td>${actualIndex+1}</td><td class="sticky-col">${st.name} ${badgeHTML}</td><td>${weeksTotal > 0 ? weeksTotal : ''}</td><td>${testsTotal > 0 ? testsTotal : ''}</td><td style="font-weight:bold;">${grandTotal > 0 ? grandTotal : ''}</td><td class="term-col">${final70 > 0 ? Math.round(final70) : ''}</td></tr>`;
+                });
+                h += `</tbody></table><div style="display:flex;justify-content:space-between;margin-top:30px;font-size:12px;font-weight:bold"><div>معلم المادة<br>${(DB.info && DB.info.name) ? DB.info.name : ''}</div><div>المدير<br>...........</div></div></div>`;
+            }
+            box.innerHTML = h;
+        }
+
+        function getCertDataForStudent(sid, sub, month) {
+            let qSum = 0, hSum = 0, bSum = 0; let qCount = 0, hCount = 0, bCount = 0; let testVal = '';
+            (DB.scrs || []).forEach(x => {
+                if (x.sid === sid && x.sub === sub && x.m === month && x.v !== '' && x.v !== 'غ' && x.v !== 'م') {
+                    if (x.t === 'q') { qSum += parseFloat(x.v); qCount++; } else if (x.t === 'h') { hSum += parseFloat(x.v); hCount++; } else if (x.t === 'b') { bSum += parseFloat(x.v); bCount++; } else if (x.t === 'test') { testVal = x.v; }
+                }
+            });
+            let wksCount = DB.wks || 4;
+            let qAvg = qCount > 0 ? Math.round(qSum / wksCount) : 0; let hAvg = hCount > 0 ? Math.round(hSum / wksCount) : 0; let bAvg = bCount > 0 ? Math.round(bSum / wksCount) : 0;
+            let total40 = qAvg + hAvg + bAvg;
+            return { q: qAvg > 0 ? Math.round(qAvg) : '', h: hAvg > 0 ? Math.round(hAvg) : '', b: bAvg > 0 ? Math.round(bAvg) : '', tot40: total40 > 0 ? Math.round(total40) : '', test: testVal !== '' ? testVal : '', hasAnyData: (qCount > 0 || hCount > 0 || bCount > 0 || testVal !== '') };
+        }
+
+        function renderCertificates() {
+            const grade = document.getElementById('f-grade').value; const cls = document.getElementById('f-class').value;
+            const uniqueNames = new Set(); (DB.stds || []).filter(s => s.g === grade && s.c === cls).forEach(s => uniqueNames.add(s.name));
+            const sel = document.getElementById('cert-student-sel'); 
+            if(sel) { let opts = '<option value="all">طباعة جميع طلاب الفصل</option>'; uniqueNames.forEach(name => { opts += `<option value="${name}">${name}</option>`; }); sel.innerHTML = opts; }
+            
+            const box = document.getElementById('cert-area');
+            if(uniqueNames.size === 0) { box.innerHTML = '<div style="padding:50px;text-align:center;color:#999;font-weight:bold;">لا يوجد طلاب لطباعة شهاداتهم</div>'; return; }
+            const sVal = sel ? sel.value : 'all'; const targetNames = sVal === 'all' ? Array.from(uniqueNames) : [sVal]; let html = '';
+
+            targetNames.forEach(stdName => {
+                const studentIDs = (DB.stds || []).filter(s => s.name === stdName && s.g === grade && s.c === cls).map(s => s.id);
+                const getRowData = (subName, monthName) => { for(let i=0; i<studentIDs.length; i++) { const data = getCertDataForStudent(studentIDs[i], subName, monthName); if(data.hasAnyData) return data; } return {q:'', h:'', b:'', tot40:'', test:'', hasAnyData:false}; };
+
+                html += `
+                <div class="cert-page">
+                    <div class="cert-header">
+                        <div style="text-align:right; flex:1;">مديرية التربية والتعليم<br>إدارة الإدارة التعليمية<br>مدرسة ${(DB.info && DB.info.sch) ? DB.info.sch : '......................'}</div>
+                        <div class="cert-title"><h2>شهادة درجات الشهور للصف ${grade}</h2>للعام الدراسي ٢٠٢٥ - ٢٠٢٦م</div>
+                        <div style="flex:1;"></div>
+                    </div>
+                    <table class="cert-info-table"><tr><th>اسم الطالب:</th><td style="font-size: 18px; color: var(--primary);">${stdName}</td></tr><tr><th>فصل:</th><td style="font-size: 14px;">${cls}</td></tr></table>
+                    <table class="cert-main-table">
+                        <thead>
+                            <tr><th rowspan="3" style="width:15%; font-size:14px;">المادة</th><th colspan="6" class="bg-yellow" style="font-size:13px; color:#d35400;">الفصل الدراسي الأول</th><th colspan="6" class="bg-blue" style="font-size:13px; color:#2980b9;">الفصل الدراسي الثاني</th></tr>
+                            <tr><th colspan="6" class="bg-yellow">شهر أكتوبر ونوفمبر</th><th colspan="6" class="bg-blue">شهر مارس وأبريل</th></tr>
+                            <tr>
+                                <th class="bg-yellow v-text">التقييمات</th><th class="bg-yellow v-text">الواجبات</th><th class="bg-yellow v-text">المواظبة والسلوك</th><th class="bg-yellow v-text" style="font-weight:900;">المجموع</th><th class="bg-yellow v-text">الاختبار الشهري</th><th class="bg-yellow v-text">توقيع ولي الأمر</th>
+                                <th class="bg-blue v-text">التقييمات</th><th class="bg-blue v-text">الواجبات</th><th class="bg-blue v-text">المواظبة والسلوك</th><th class="bg-blue v-text" style="font-weight:900;">المجموع</th><th class="bg-blue v-text">الاختبار الشهري</th><th class="bg-blue v-text">توقيع ولي الأمر</th>
+                            </tr>
+                            <tr style="background:#f9f9f9; font-weight:bold;"><td>الدرجة النهائية</td><td>٢٠</td><td>١0</td><td>١0</td><td>٤0</td><td>١٥</td><td>-</td><td>٢0</td><td>١0</td><td>١0</td><td>٤0</td><td>١٥</td><td>-</td></tr>
+                        </thead><tbody>`;
+
+                basicSubjects.forEach(sub => {
+                    const term1 = getRowData(sub, 'أكتوبر').hasAnyData ? getRowData(sub, 'أكتوبر') : getRowData(sub, 'نوفمبر');
+                    const term2 = getRowData(sub, 'مارس').hasAnyData ? getRowData(sub, 'مارس') : getRowData(sub, 'أبريل');
+                    html += `<tr><td style="font-weight:bold; text-align:right; padding-right:5px;">${sub}</td><td>${term1.q}</td><td>${term1.h}</td><td>${term1.b}</td><td style="font-weight:bold;">${term1.tot40}</td><td>${term1.test}</td><td></td><td>${term2.q}</td><td>${term2.h}</td><td>${term2.b}</td><td style="font-weight:bold;">${term2.tot40}</td><td>${term2.test}</td><td></td></tr>`;
+                });
+
+                html += `<tr class="sep-row"><td colspan="13">مواد خارج المجموع</td></tr>`;
+
+                extraSubjects.forEach(sub => {
+                    const term1 = getRowData(sub, 'أكتوبر').hasAnyData ? getRowData(sub, 'أكتوبر') : getRowData(sub, 'نوفمبر');
+                    const term2 = getRowData(sub, 'مارس').hasAnyData ? getRowData(sub, 'مارس') : getRowData(sub, 'أبريل');
+                    html += `<tr><td style="font-weight:bold; text-align:right; padding-right:5px;">${sub}</td><td>${term1.q}</td><td>${term1.h}</td><td>${term1.b}</td><td style="font-weight:bold;">${term1.tot40}</td><td>${term1.test}</td><td></td><td>${term2.q}</td><td>${term2.h}</td><td>${term2.b}</td><td style="font-weight:bold;">${term2.tot40}</td><td>${term2.test}</td><td></td></tr>`;
+                });
+
+                html += `</tbody></table><div class="cert-footer"><div>مسئول شئون الطلبة والامتحانات<br>.........................</div><div>وكيل المدرسة<br>.........................</div><div>مدير المدرسة<br>.........................</div></div></div>`;
+            });
+            box.innerHTML = html;
+        }
+
+        function renderAppreciation() {
+            const list = getList(); const sel = document.getElementById('apprec-student-sel'); 
+            if(sel) { let opts = '<option value="all">لجميع طلاب الفصل</option>'; list.forEach(s => { opts += `<option value="${s.name}">${s.name}</option>`; }); sel.innerHTML = opts; }
+            const grade = document.getElementById('f-grade'); const cls = document.getElementById('f-class'); const sub = document.getElementById('f-subject'); const box = document.getElementById('appreciation-area');
+            if(!grade || !cls || !sub || !box) return;
+            if(list.length === 0) { box.innerHTML = '<div style="padding:50px;text-align:center;color:#999;font-weight:bold;">لا يوجد طلاب في هذا الفصل لطباعة شهادات التقدير</div>'; return; }
+            const sVal = sel ? sel.value : 'all'; const targetNames = sVal === 'all' ? list.map(s => s.name) : [sVal]; let html = '';
+            let logoHTML = ''; 
+
+            targetNames.forEach(stdName => {
+                html += `
+                <div class="appreciation-cert">
+                    <div class="cert-border-inner">
+                        <div class="cert-top-details">
+                            <div style="text-align:right; width:33%;">محافظة / .......................<br>إدارة / .......................<br>مدرسة / ${(DB.info && DB.info.sch) ? DB.info.sch : '.......................'}</div>
+                            <div style="text-align:center; width:33%;">${logoHTML}</div>
+                            <div style="text-align:left; width:33%;">العام الدراسي<br>٢٠٢٥ / ٢٠٢٦م</div>
+                        </div>
+                        <h1 class="cert-main-title"><i class="fa fa-award" style="color:#f1c40f;"></i> شهادة شكر وتقدير <i class="fa fa-award" style="color:#f1c40f;"></i></h1>
+                        <div class="cert-body-text">
+                            تتقدم إدارة المدرسة وأسرة مادة <strong class="highlight">${sub.value}</strong><br>
+                            بأسمى آيات الشكر والتقدير للطالب/ة: <br><strong class="std-name">${stdName}</strong><br>
+                            المقيد/ة بالصف <strong class="highlight">${grade.value}</strong> - فصل <strong class="highlight">${cls.value}</strong><br>
+                            وذلك للتفوق العلمي والتميز الأخلاقي والالتزام خلال العام الدراسي.<br>
+                            مع خالص أمنياتنا بدوام التوفيق والنجاح الباهر.
+                        </div>
+                        <div class="cert-signatures">
+                            <div style="text-align:center;">معلم المادة<br><span style="color:#27ae60; font-size:24px;">${(DB.info && DB.info.name) ? DB.info.name : ''}</span></div>
+                            <div style="text-align:center;">مدير المدرسة<br>.........................</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            box.innerHTML = html;
+        }
+
+        // 🌟 الطباعة العادية والمباشرة 🌟
+        function executeNativePrint(orient, forceSheet = false) {
+            if (forceSheet) openSheet();
+            closeModal('mod-print');
+            
+            let styleEl = document.getElementById('dynamic-print-style');
+            const currentCss = styleEl.innerHTML;
+            styleEl.innerHTML = currentCss + ` @media print { @page { size: A4 ${orient}; margin: 5mm; } }`;
+            
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => { styleEl.innerHTML = currentCss; }, 1000);
+            }, 300);
+        }
+
+        function exportExcel() {
+            const list=getList(); const sub = document.getElementById('f-subject').value;
+            let h1 = ['م', 'الاسم']; let h2 = ['', '']; let h3 = ['', ''];
+            for(let w=1; w<=(DB.wks || 4); w++) { h1.push(`أسبوع ${w}`, '', '', ''); h2.push('منزلي', 'تقييم', 'سلوك', 'مجموع'); h3.push('10', '20', '10', '40'); }
+            h1.push('اختبار الشهر', 'المجموع الكلي', 'المتوسط'); h2.push('', '', ''); h3.push('15', '', ''); const data = [h1, h2, h3];
+            list.forEach((s,i)=>{ 
+                let row = [i+1, s.name]; let finalTot = 0;
+                for(let w=1; w<=(DB.wks || 4); w++) { 
+                    const v1=getVal(s.id,w,'h'), v2=getVal(s.id,w,'q'), v3=getVal(s.id,w,'b'); const sum=getNum(v1)+getNum(v2)+getNum(v3); if(v1!==''||v2!==''||v3!=='') finalTot+=sum;
+                    row.push(v1, v2, v3, (v1!==''||v2!==''||v3!=='') ? sum : ''); 
+                } 
+                const mTest = getVal(s.id, 'test', 'test'); finalTot += getNum(mTest);
+                row.push(mTest, finalTot>0 ? finalTot : '', finalTot>0 ? ((finalTot - getNum(mTest))/(DB.wks || 4)).toFixed(1) : ''); data.push(row); 
+            });
+            const ws = XLSX.utils.aoa_to_sheet(data); 
+            if(!ws['!merges']) ws['!merges'] = []; ws['!merges'].push({s:{r:0,c:0}, e:{r:2,c:0}}); ws['!merges'].push({s:{r:0,c:1}, e:{r:2,c:1}});
+            let col = 2;
+            for(let w=1; w<=(DB.wks || 4); w++) { ws['!merges'].push({s:{r:0,c:col}, e:{r:0,c:col+3}}); col += 4; }
+            ws['!merges'].push({s:{r:0,c:col}, e:{r:1,c:col}}); ws['!merges'].push({s:{r:0,c:col+1}, e:{r:2,c:col+1}}); ws['!merges'].push({s:{r:0,c:col+2}, e:{r:2,c:col+2}}); ws['!cols'] = [{wch: 5}, {wch: 25}]; 
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "السجل"); XLSX.writeFile(wb, `SmartSchool_${sub}.xlsx`); showToast('تم تصدير الإكسل بنجاح');
+        }
+
+        function exportTermExcel() {
+            const list=getList(); const sub = document.getElementById('f-subject').value;
+            const term = document.getElementById('term-sel').value; const termName = term == '1' ? 'الترم الأول' : 'الترم الثاني';
+            const termMonths = term == '1' ? ['سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'] : ['فبراير', 'مارس', 'أبريل', 'مايو'];
+            let data = [['م', 'الاسم', 'متوسط الأسابيع (40)', 'اختبارات الشهور (30)', 'النهائي من 70']];
+            list.forEach((st, i) => {
+                let hSum = 0, qSum = 0, bSum = 0; let hCount = 0, qCount = 0, bCount = 0; let testsTotal = 0; let testCount = 0;
+                (DB.scrs || []).forEach(x => { 
+                    if(x.sid === st.id && x.sub === sub && termMonths.includes(x.m) && x.v !== '' && x.v !== 'غ' && x.v !== 'م') { 
+                        let val = parseFloat(x.v);
+                        if(x.t === 'h') { hSum += val; hCount++; } else if(x.t === 'q') { qSum += val; qCount++; } else if(x.t === 'b') { bSum += val; bCount++; } else if(x.t === 'test') { testsTotal += val; testCount++; }
+                    } 
+                });
+                let hAvg = hCount > 0 ? (hSum / hCount) : 0; let qAvg = qCount > 0 ? (qSum / qCount) : 0; let bAvg = bCount > 0 ? (bSum / bCount) : 0;
+                let weeksTotal = Math.round(hAvg + qAvg + bAvg); let grandTotal = Math.round(weeksTotal + testsTotal);
+                let hasWeeksData = (hCount > 0 || qCount > 0 || bCount > 0); let hasTestsData = (testCount > 0);
+                data.push([ i+1, st.name, hasWeeksData ? weeksTotal : '', hasTestsData ? testsTotal : '', (hasWeeksData || hasTestsData) ? grandTotal : '' ]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(data); ws['!cols'] = [{wch: 5}, {wch: 30}, {wch: 20}, {wch: 20}, {wch: 15}];
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, termName); XLSX.writeFile(wb, `SmartSchool_Term_${termName}_${sub}.xlsx`); showToast('تم تصدير شيت الترم بنجاح');
+        }
+        
+        function normalizeNames() { 
+            showCustomConfirm('<i class="fa fa-broom"></i> توحيد وتصحيح الأسماء', 'سيتم ضبط وتصحيح أسماء طلاب هذا الفصل لهذه المادة كالتالي:\n1. دمج (عبد) مع ما بعدها\n2. تحويل (ة) إلى (هـ)\n3. تحويل (أ، إ، آ) إلى (ا)\n\nهل أنت متأكد من تنفيذ هذا التعديل؟', () => { 
+                const currentList = getList(); 
+                currentList.forEach(s => { 
+                    let n = s.name; 
+                    n = n.replace(/عبد\s+/g, 'عبد'); 
+                    n = n.replace(/ة/g, 'ه'); 
+                    n = n.replace(/[أإآ]/g, 'ا'); 
+                    s.name = n.trim(); 
+                }); 
+                saveData(false); 
+                triggerReRender(); 
+                showToast('تم توحيد الأسماء بنجاح'); 
+            }, 'نعم، قم بالتوحيد', 'b-blue'); 
+        }
+
+        function importNamesToTextarea() {
+            const sourceSub = document.getElementById('import-source-sub').value;
+            if (!sourceSub) return showToast('الرجاء اختيار المادة المراد الجلب منها', 'error');
+            const grade = document.getElementById('bulk-grade').value;
+            const cls = document.getElementById('bulk-class').value;
+            const sourceStds = (DB.stds || []).filter(s => s.g === grade && s.c === cls && s.sub === sourceSub);
+            if (sourceStds.length === 0) return showToast('لا توجد أسماء في هذه المادة لنسخها', 'error');
+            const names = sourceStds.map(s => s.name).join('\n');
+            document.getElementById('bulk-names').value = names;
+            showToast('تم جلب الأسماء بنجاح', 'success');
+        }
+    </script>
+</body>
+</html>

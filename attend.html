@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق المدرسة الذكية - الرصد الإعدادي</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root { --primary: #2c3e50; --gold: #f1c40f; --bg: #f3f4f6; --blue: #2980b9; --green: #27ae60; --red: #c0392b; --purple: #8e44ad; --orange: #d35400; --teal: #00cec9; --info: #3498db; --joy-blue: #0984e3; --danger: #e74c3c; --success: #27ae60; --dark-grey: #7f8c8d; --whatsapp: #25D366;}
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { font-family: 'Cairo', sans-serif; background: var(--bg); margin: 0; padding: 0; padding-bottom: 50px; user-select: none; }
+
+        #custom-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #333; color: #fff; padding: 12px 25px; border-radius: 50px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 99999; transition: 0.3s; opacity: 0; display: flex; align-items: center; gap: 10px; }
+        #custom-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        #custom-toast.success { border-right: 5px solid var(--green); }
+        #custom-toast.error { border-right: 5px solid var(--red); }
+
+        .container { width: 100%; max-width: 900px; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); height: fit-content; border-top: 5px solid var(--joy-blue); margin: 10px auto;}
+
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .back-btn { background: #eee; border: none; padding: 8px 12px; border-radius: 8px; font-family: 'Cairo'; font-weight: bold; cursor: pointer; color: var(--primary); transition: 0.2s; font-size: 13px;}
+        .back-btn:hover { background: #ddd; }
+
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 15px; }
+        select, input[type="date"], input[type="month"], input[type="text"], input[type="password"], input[type="number"] { width: 100%; padding: 8px; border: 2px solid var(--joy-blue); border-radius: 8px; font-family: 'Cairo'; font-weight: bold; font-size: 13px; outline: none; transition: 0.3s; background: #f4f9ff; color: var(--primary);}
+        select:focus, input:focus { background: white; box-shadow: 0 0 5px rgba(9, 132, 227, 0.4);}
+
+        .action-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 5px; }
+        .extra-actions-panel { display: none; gap: 6px; flex-wrap: wrap; margin-bottom: 15px; padding: 10px; background: #eaf2f8; border-radius: 10px; border: 1px dashed var(--joy-blue); animation: fadeIn 0.3s;}
+        
+        .btn-top { flex: 1; padding: 10px 8px; border: none; border-radius: 8px; color: white; font-family: 'Cairo'; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 5px; transition: 0.2s; box-shadow: 0 3px 6px rgba(0,0,0,0.15); min-width: 100px;}
+        .btn-top:active { transform: scale(0.95); }
+        
+        .btn-all-p { background: linear-gradient(45deg, #27ae60, #2ecc71); }
+        .btn-all-a { background: linear-gradient(45deg, #c0392b, #e74c3c); }
+        .btn-filter { background: linear-gradient(45deg, #34495e, #2c3e50); }
+        .btn-more { background: linear-gradient(45deg, #7f8c8d, #95a5a6); color: white; }
+        
+        .btn-chart { background: linear-gradient(45deg, #00cec9, #81ecec); color: #000 !important; }
+        .btn-affairs { background: linear-gradient(45deg, #d35400, #e67e22); }
+        .btn-wa-bulk { background: linear-gradient(45deg, #128C7E, #25D366); }
+        .btn-search { background: linear-gradient(45deg, #f39c12, #f1c40f); color: #000 !important; }
+        .btn-reports { background: linear-gradient(45deg, #8e44ad, #9b59b6); }
+
+        .att-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px;}
+        .student-row { display: flex; align-items: center; background: #fff; border: 1px solid #eee; padding: 6px 8px; border-radius: 10px; transition: 0.2s; justify-content: space-between; flex-wrap: nowrap !important;}
+        .student-row:hover { background-color: #f9f9f9; border-color: #ddd; transform: translateX(-2px); }
+        .student-row.freq-absent { background-color: #fff5f5; border-right: 4px solid var(--danger); }
+
+        .name-section { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
+        .student-num { background: #e3f2fd; color: var(--joy-blue); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+        .student-info { font-weight: 800; color: var(--primary); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px;}
+
+        .badge-warn { background: var(--danger); color: white; padding: 2px 6px; border-radius: 20px; font-size: 9px; font-weight: bold; animation: pulse 2s infinite;}
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        .badge-status { background: #e0f7fa; color: #0277bd; padding: 2px 6px; border-radius: 4px; font-size: 9px; border: 1px solid #b3e5fc;}
+        .badge-status.red { background: #ffebee; color: #c62828; border-color: #ffcdd2;}
+
+        .controls-section { display: flex; align-items: center; gap: 4px; flex-shrink: 0; flex-wrap: nowrap !important; }
+        .status-group { display: flex; gap: 3px; direction: rtl; flex-wrap: nowrap !important; } 
+        
+        .status-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #ddd; background: #fafafa; color: #aaa; font-family: 'Cairo'; font-weight: bold; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; padding: 0; flex-shrink: 0;}
+        .status-btn.selected { color: white; border-color: transparent; transform: scale(1.1); z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
+        .status-btn[data-val="present"].selected { background: var(--success); }
+        .status-btn[data-val="absent"].selected { background: var(--danger); }
+        .status-btn[data-val="late"].selected { background: var(--gold); color: #000; }
+        .status-btn[data-val="dropout"].selected { background: var(--dark-grey); }
+        
+        .period-sel { width: 45px; height: 28px; border-radius: 6px; border: 1px solid #ddd; background: #fdfdfd; color: var(--danger); font-family: 'Cairo'; font-size: 10px; font-weight: bold; padding: 0 2px; text-align: center; cursor: pointer;}
+        
+        .btn-wa-icon { color: white; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; font-size: 14px; transition: 0.2s; padding: 0; flex-shrink: 0;}
+        .btn-wa-icon.active { background: var(--whatsapp); box-shadow: 0 2px 5px rgba(37, 211, 102, 0.4); }
+        .btn-wa-icon.disabled { background: #bdc3c7; cursor: not-allowed; opacity: 0.5; }
+
+        .manager-mode .status-btn, .manager-mode .period-sel { pointer-events: none; opacity: 0.8; }
+        .manager-mode .btn-all-p, .manager-mode .btn-all-a { display: none; }
+
+        .student-row.is-dropout { background: #f9f9f9; opacity: 0.6; }
+        .student-row.is-dropout .student-info { text-decoration: line-through; color: #777; }
+
+        .stats-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 4px solid var(--joy-blue); display: flex; justify-content: space-around; padding: 10px 5px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 900; }
+        .stat-item { text-align: center; font-size: 11px; font-weight: bold; color: #555; }
+        .stat-val { font-size: 16px; font-weight: 900; display: block; margin-top: 2px; }
+
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box;}
+        .modal-content { background: white; width: 100%; max-width: 900px; max-height: 95vh; overflow-y: auto; padding: 15px; border-radius: 12px; border-top: 5px solid var(--purple); position: relative;}
+        
+        .report-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: #e2e8f0; padding: 8px; border-radius: 12px; overflow-x: auto; white-space: nowrap; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);}
+        .tab-btn { flex: 1; padding: 12px 10px; background: transparent; border: none; border-radius: 8px; font-family: 'Cairo'; font-weight: 800; cursor: pointer; color: #475569; font-size: 13px; transition: 0.3s;}
+        .tab-btn.active { background: var(--joy-blue); color: white; box-shadow: 0 4px 10px rgba(9, 132, 227, 0.4); }
+        .tab-btn[onclick*="tab-warn"].active { background: var(--danger); color: white; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4); }
+
+        .report-section { display: none; }
+        .report-section.active { display: block; animation: fadeIn 0.3s; }
+
+        .report-table-wrap { overflow-x: auto; margin-top: 15px; border: 1px solid #eee; border-radius: 8px; background: white; }
+        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; white-space: nowrap; border: 2px solid #000; }
+        .report-table th { background: #e3f2fd; color: var(--primary); padding: 8px 4px; border: 1px solid #000; font-size: 11px;}
+        .report-table td { border: 1px solid #000; padding: 6px 4px; font-weight: bold; }
+
+        .warn-btn { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 8px; font-family: 'Cairo'; font-size: 12px; cursor: pointer; font-weight: bold; transition:0.2s;}
+        
+        .student-profile-card { background: linear-gradient(135deg, #ffffff, #f0f8ff); border: 2px solid var(--joy-blue); border-radius: 12px; padding: 15px; box-shadow: 0 10px 20px rgba(9, 132, 227, 0.15); margin-top: 15px; display: none;}
+        .sp-header { display: flex; align-items: center; gap: 12px; border-bottom: 2px dashed #bbdefb; padding-bottom: 12px; margin-bottom: 12px;}
+        .sp-icon { width: 50px; height: 50px; background: var(--joy-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;}
+        .sp-name { font-size: 18px; font-weight: 900; color: var(--primary); margin: 0; }
+        .sp-tags { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap;}
+        .sp-tag { background: #e0f7fa; color: #0277bd; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; border: 1px solid #81d4fa;}
+        
+        .sp-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;}
+        .sp-stat-box { background: white; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #eee; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
+        .sp-stat-num { font-size: 28px; font-weight: 900; color: var(--danger); line-height: 1;}
+        .sp-stat-label { font-size: 11px; color: #777; font-weight: bold; margin-top: 5px;}
+        .sp-dates { background: #fff5f5; padding: 10px; border-radius: 8px; border: 1px solid #ffcdd2; font-size: 12px; color: var(--danger); line-height: 1.8;}
+        
+        .search-results-box { max-height: 200px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 8px; margin-top: 5px; display: none;}
+        .search-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between;}
+        .search-item:hover { background: #f0f8ff; }
+
+        .wa-list-box { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-bottom: 10px; background: #fafafa;}
+        .wa-std-row { display: flex; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid #eee; }
+        .wa-std-row:last-child { border-bottom: none; }
+        .wa-std-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--whatsapp); cursor: pointer; }
+
+        .popup { background: white; width: 90%; max-width: 380px; padding: 15px; border-radius: 12px; text-align: center; border-top: 5px solid var(--gold); animation: zoomIn 0.2s; max-height: 95vh; display: flex; flex-direction: column; overflow-y: auto; }
+        @keyframes zoomIn { from{transform:scale(0.8)} to{transform:scale(1)} }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(-10px)} to{opacity:1; transform:translateY(0)} }
+        
+        .popup input[type="text"], .popup input[type="password"], .popup input[type="number"], .popup select, .popup textarea { 
+            width: 100%; padding: 6px 10px; margin: 4px 0; border: 2px solid #ddd; 
+            border-radius: 6px; font-family: 'Cairo', sans-serif; font-weight: bold; 
+            text-align: center; font-size: 13px; box-sizing: border-box; transition: 0.3s; height: 36px;
+        }
+        .popup textarea { height: auto; min-height: 60px; text-align: right; resize: none; line-height: 1.5; }
+        .popup input[type="range"] { width: 100%; margin: 5px 0 10px 0; accent-color: var(--blue); height: auto;}
+        .popup input:focus, .popup select:focus { border-color: var(--blue); outline: none; box-shadow: 0 0 5px rgba(41, 128, 185, 0.3); }
+        .popup h3 { margin-top: 0; margin-bottom: 10px; font-size: 18px; }
+        
+        .popup-btns { display: flex; gap: 8px; margin-top: 10px; }
+        .p-btn { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; font-family: 'Cairo', sans-serif; cursor: pointer; color: white !important; font-size: 13px; background: var(--blue); transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+        .p-btn:active { transform: scale(0.95); }
+        .p-btn.b-blue { background-color: var(--blue) !important; }
+        .p-btn.b-red { background-color: var(--red) !important; }
+        .p-btn.b-save { background-color: var(--green) !important; }
+        .p-btn.b-exit { background-color: #7f8c8d !important; }
+        .p-btn.b-purple { background-color: var(--purple) !important; }
+
+        .week-date-input { width: 100%; border: 1px solid #ccc; font-family: 'Cairo'; font-size: 10px; padding: 2px; border-radius: 4px; text-align: center; font-weight: bold; color: var(--primary); background: white;}
+        
+        #print-area { display: none; }
+        
+        /* 🌟 تنسيقات أرشيف الشهور 🌟 */
+        .month-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 15px; }
+        .month-btn { background: #e3f2fd; border: 2px solid var(--blue); padding: 15px; border-radius: 10px; font-family: 'Cairo'; font-weight: bold; color: var(--primary); cursor: pointer; transition: 0.2s;}
+        .month-btn:hover { background: var(--blue); color: white; }
+        .days-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 15px; justify-content: center; }
+        .day-btn { background: #fafafa; border: 1px solid #ccc; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #333; transition: 0.2s;}
+        .day-btn.has-absent { background: #ffebee; border-color: var(--danger); color: var(--danger); }
+        .day-btn:hover { transform: scale(1.05); }
+
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            body.print-modal-active > *:not(#print-area):not(#custom-toast) { display: none !important; }
+            body.print-modal-active #print-area { display: block !important; width: 100%; direction: rtl; background: white; }
+            
+            #print-area .no-print { display: none !important; }
+            #print-area .report-table-wrap { overflow: visible !important; max-height: none !important; width: 100% !important; border:none !important; }
+            #print-area .sheet-page { page-break-after: always; margin-bottom: 20px; display: block; width: 100%; }
+            #print-area .sheet-page:last-child { page-break-after: auto; }
+            #print-area .week-date-input { border: none !important; background: transparent !important; color: #000 !important; font-size: 11px !important; text-align: center; width: 100% !important; padding: 0 !important; margin: 0 !important; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+            #print-area .week-date-input::-webkit-calendar-picker-indicator { display: none !important; }
+            #print-area .period-sel { display: none !important; } 
+
+            body:not(.print-modal-active) .no-print, 
+            body:not(.print-modal-active) .action-bar, 
+            body:not(.print-modal-active) .extra-actions-panel, 
+            body:not(.print-modal-active) .controls-grid, 
+            body:not(.print-modal-active) .header-top, 
+            body:not(.print-modal-active) .stats-bar, 
+            body:not(.print-modal-active) .overlay { display: none !important; }
+        }
+    </style>
+    <style id="dynamic-print-style"></style>
+</head>
+<body id="mainBody">
+
+<div id="custom-toast"><i id="toast-icon" class="fa fa-info-circle"></i> <span id="toast-msg"></span></div>
+
+<div class="container" id="mainContainer">
+    <div class="header-top no-print">
+        <div>
+            <h3 style="color:var(--primary); margin: 0; font-weight:900; font-size:16px;"><i class="fa fa-calendar-check" style="color:var(--joy-blue)"></i> سجل الغياب وشئون الطلبة</h3>
+            <div id="app-header" style="font-size: 11px; color: #777; font-weight: bold; margin-top: 3px;"></div>
+        </div>
+        <button class="back-btn" onclick="goBack()"><i class="fa fa-arrow-right"></i> الدفتر</button>
+    </div>
+
+    <div class="controls-grid no-print">
+        <select id="gradeSelect" onchange="render()"></select>
+        <select id="classSelect" onchange="render()"></select>
+        <select id="subjectSelect" onchange="render()"></select>
+        <input type="date" id="dateSelect" onchange="render()">
+    </div>
+
+    <div class="action-bar no-print">
+        <button class="btn-top btn-all-p" onclick="markAll('present')"><i class="fas fa-check"></i> الكل حاضر</button>
+        <button class="btn-top btn-all-a" onclick="markAll('absent')"><i class="fas fa-times"></i> الكل غائب</button>
+        <button class="btn-top btn-filter" onclick="toggleAbsentFilter()" id="btn-filter-abs"><i class="fas fa-filter"></i> فلتر الغياب</button>
+        <button class="btn-top btn-more" onclick="toggleExtraActions()" id="btn-more-opts"><i class="fas fa-caret-down"></i> أدوات إضافية</button>
+    </div>
+
+    <div class="extra-actions-panel no-print" id="extra-actions-panel">
+        <button class="btn-top btn-chart" onclick="openChartModal()"><i class="fas fa-chart-bar"></i> رسم بياني للغياب</button>
+        <button class="btn-top btn-affairs" onclick="sendToAffairs()"><i class="fab fa-whatsapp"></i> تقرير لشئون الطلبة</button>
+        <button class="btn-top btn-wa-bulk" onclick="openWhatsAppModal()"><i class="fab fa-whatsapp"></i> رسائل لجروب الفصل</button>
+        <button class="btn-top btn-search" onclick="openSearchModal()"><i class="fas fa-search"></i> كشف حساب طالب</button>
+        <button class="btn-top btn-reports" onclick="openReportsModal()"><i class="fas fa-file-invoice"></i> السجلات والتقارير</button>
+        <button class="btn-top" style="background:#e84393; flex-basis: 100%; margin-top:5px; font-size:14px;" onclick="openWeeklyModal()"><i class="fa fa-calendar-alt"></i> سجل الغياب المجمع (الترم الثاني كامل)</button>
+        <button class="btn-top" style="background:#8e44ad; flex-basis: 100%; margin-top:5px; font-size:14px;" onclick="openControlModal()"><i class="fa fa-print"></i> طباعة كشف الغياب للكنترول (بالأيام)</button>
+        
+        <button class="btn-top" style="background:#9b59b6; flex-basis: 48%; margin-top:5px; font-size:14px;" onclick="openTeacherLeaveModal()"><i class="fa fa-calendar-minus"></i> إجازات المعلم</button>
+        <button class="btn-top" style="background:#f39c12; flex-basis: 48%; margin-top:5px; font-size:14px; color:black;" onclick="openPublicHolidaysModal()"><i class="fa fa-flag"></i> العطلات الرسمية</button>
+        <button class="btn-top" style="background:#34495e; flex-basis: 100%; margin-top:5px; font-size:14px;" onclick="openArchiveModal()"><i class="fa fa-archive"></i> أرشيف الغياب بالشهور</button>
+
+        <button class="btn-top" style="background:var(--danger); flex-basis: 100%; margin-top:5px;" onclick="openModal('mod-clear')"><i class="fa fa-trash-alt"></i> مسح فصل أو مادة بالكامل</button>
+    </div>
+
+    <div id="attendanceList" class="att-list">
+        <div style="text-align:center; color:#999; margin-top:30px; font-weight:bold; font-size: 13px;">
+            <i class="fas fa-hand-pointer" style="display:block; font-size:35px; margin-bottom:10px; color:#ddd;"></i>
+            اختر الصف والفصل والتاريخ لبدء سجل الغياب
+        </div>
+    </div>
+</div>
+
+<div class="stats-bar no-print">
+    <div class="stat-item">إجمالي<span class="stat-val" id="countTotal">0</span></div>
+    <div class="stat-item" style="color:var(--success);">حضور<span class="stat-val" id="countPresent">0</span></div>
+    <div class="stat-item" style="color:var(--danger);">غياب<span class="stat-val" id="countAbsent">0</span></div>
+    <div class="stat-item" style="color:#9b59b6;">إجازة<span class="stat-val" id="countLeave">0</span></div>
+    <div class="stat-item" style="color:var(--gold);">تأخير<span class="stat-val" id="countLate">0</span></div>
+    <div class="stat-item" style="color:var(--dark-grey);">منقطع<span class="stat-val" id="countDrop">0</span></div>
+</div>
+
+<div id="mod-teacher-leave" class="overlay">
+    <div class="popup" style="border-top: 5px solid #9b59b6;">
+        <h3 style="color:#9b59b6;"><i class="fa fa-calendar-minus"></i> إجازات المعلم</h3>
+        <select id="t-leave-type" class="sel-box" style="margin-bottom:10px; border-color:#9b59b6;">
+            <option value="عارضة">إجازة عارضة</option>
+            <option value="اعتيادية">إجازة اعتيادية</option>
+            <option value="مرضية">إجازة مرضية</option>
+            <option value="وضع">إجازة وضع</option>
+            <option value="استثنائية">إجازة استثنائية</option>
+        </select>
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <div style="flex:1"><label style="font-size:10px; font-weight:bold;">من تاريخ</label><input type="date" id="t-leave-start" style="border-color:#9b59b6;"></div>
+            <div style="flex:1"><label style="font-size:10px; font-weight:bold;">إلى تاريخ</label><input type="date" id="t-leave-end" style="border-color:#9b59b6;"></div>
+        </div>
+        <button class="p-btn" style="background:#9b59b6; width:100%; margin-top:5px;" onclick="saveTeacherLeave()">حفظ الإجازة</button>
+        <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px; max-height:150px; overflow-y:auto;" id="t-leave-list"></div>
+        <button class="p-btn b-exit" style="width:100%; margin-top:10px" onclick="closeModal('mod-teacher-leave')">إغلاق</button>
+    </div>
+</div>
+
+<div id="mod-public-holidays" class="overlay">
+    <div class="popup" style="border-top: 5px solid #f39c12;">
+        <h3 style="color:#e67e22;"><i class="fa fa-flag"></i> العطلات الرسمية</h3>
+        <input type="text" id="h-name" placeholder="اسم المناسبة (مثال: 6 أكتوبر)" style="border-color:#f39c12; margin-bottom:10px;">
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <div style="flex:1"><label style="font-size:10px; font-weight:bold;">من</label><input type="date" id="h-start" style="border-color:#f39c12;"></div>
+            <div style="flex:1"><label style="font-size:10px; font-weight:bold;">إلى</label><input type="date" id="h-end" style="border-color:#f39c12;"></div>
+        </div>
+        <button class="p-btn" style="background:#f39c12; color:black !important; width:100%; margin-top:5px;" onclick="savePublicHoliday()">حفظ العطلة</button>
+        <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px; max-height:150px; overflow-y:auto;" id="h-list"></div>
+        <button class="p-btn b-exit" style="width:100%; margin-top:10px" onclick="closeModal('mod-public-holidays')">إغلاق</button>
+    </div>
+</div>
+
+<div id="mod-archive" class="overlay">
+    <div class="popup" style="max-width: 450px; border-top: 5px solid #34495e;">
+        <h3 style="color:#34495e;"><i class="fa fa-archive"></i> أرشيف الغياب بالشهر</h3>
+        <p style="font-size:11px; color:#777;">اختر الشهر لعرض الأيام التي تم رصد الغياب فيها.</p>
+        <div class="month-grid" id="archive-months-grid"></div>
+        <div id="archive-days-container" style="display:none; margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
+            <h4 style="color:var(--primary); margin:0 0 10px 0;" id="archive-month-title">أيام الرصد</h4>
+            <div class="days-list" id="archive-days-list"></div>
+        </div>
+        <button class="p-btn b-exit" style="width:100%; margin-top:15px" onclick="closeModal('mod-archive')">إغلاق</button>
+    </div>
+</div>
+
+<div id="mod-day-details" class="overlay" style="z-index: 3000;">
+    <div class="popup" style="border-top: 5px solid var(--danger);">
+        <h3 style="color:var(--danger); margin-bottom:5px;"><i class="fa fa-users"></i> غياب يوم <span id="dd-date"></span></h3>
+        <p style="font-weight:bold; color:var(--primary); font-size:12px; margin-top:0;">إجمالي الغائبين: <span id="dd-count" style="color:var(--danger); font-size:16px;">0</span> طالب</p>
+        <div style="max-height:200px; overflow-y:auto; text-align:right; background:#f4f6f8; padding:10px; border-radius:8px;" id="dd-list"></div>
+        <button class="p-btn b-exit" style="width:100%; margin-top:15px" onclick="closeModal('mod-day-details')">رجوع</button>
+    </div>
+</div>
+
+
+<div id="chartModal" class="overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <h3 style="color:var(--primary); margin-top:0; text-align:center;"><i class="fa fa-chart-bar" style="color:var(--teal)"></i> الإحصائية البيانية للغياب</h3>
+        <p style="text-align:center; font-size:12px; color:#777; margin-bottom:15px; font-weight:bold;">رسم بياني يوضح نسبة الغياب في آخر 7 أيام رصد لهذا الفصل.</p>
+        <div style="position: relative; height:300px; width:100%;">
+            <canvas id="attendanceChart"></canvas>
+        </div>
+        <button class="btn-top" style="background:#7f8c8d; width:100%; margin-top:20px; font-size:15px;" onclick="closeModal('chartModal')">إغلاق النافذة</button>
+    </div>
+</div>
+
+<div id="mod-weekly" class="overlay">
+    <div class="modal-content" style="max-width: 98%; width: 1400px; padding: 15px;">
+        <h3 style="color:var(--primary); margin-top:0; text-align:center;" class="no-print"><i class="fa fa-calendar-alt" style="color:#e84393;"></i> سجل حصر الغياب بالأسابيع (الرسمي)</h3>
+        <div class="no-print" style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:10px; background:#f4f6f8; padding:8px; border-radius:8px;">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:var(--primary); cursor:pointer;"><input type="checkbox" id="inc-sat-weekly" onchange="renderWeeklyTable()" style="width:18px; height:18px; margin:0;"> إضافة السبت</label>
+            <span style="color:#ccc;">|</span>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:var(--primary);">أسماء بالصفحة:<input type="number" id="weekly-rows" value="25" min="5" max="100" style="width:60px; padding:4px; font-size:12px;"></label>
+            <button class="btn-top" style="background:var(--joy-blue); padding:5px 10px;" onclick="renderWeeklyTable()">تحديث</button>
+        </div>
+        <div class="no-print" style="display:flex; gap:8px; margin-bottom:10px;">
+            <button class="btn-top" style="background:var(--danger); flex:1;" onclick="executeNativePrint('landscape', 'weekly-wrap')"><i class="fa fa-print"></i> طباعة الكشف</button>
+            <button class="btn-top" style="background:var(--success); flex:1;" onclick="exportWeeklyExcel()"><i class="fa fa-file-excel"></i> تصدير إكسل</button>
+        </div>
+        <div class="report-table-wrap" id="weekly-wrap" style="background:transparent; padding:0; border:none; max-height: 55vh; overflow-y: auto; overflow-x: auto;"></div>
+        <button class="btn-top no-print" style="background:#7f8c8d; width:100%; margin-top:15px; font-size:15px;" onclick="closeModal('mod-weekly')">إغلاق النافذة</button>
+    </div>
+</div>
+
+<div id="mod-control" class="overlay">
+    <div class="modal-content" style="max-width: 98%; width: 1400px; padding: 15px;">
+        <h3 style="color:var(--primary); margin-top:0; text-align:center;" class="no-print"><i class="fa fa-print" style="color:#8e44ad;"></i> سجل رصد غياب فصل (مفصل بالأيام)</h3>
+        <div class="no-print" style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:10px; background:#f4f6f8; padding:8px; border-radius:8px;">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:var(--primary); cursor:pointer;"><input type="checkbox" id="inc-sat-ctrl" onchange="renderControlTable()" style="width:18px; height:18px; margin:0;"> إضافة السبت</label>
+            <span style="color:#ccc;">|</span>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:var(--primary);">أسماء بالصفحة:<input type="number" id="control-rows" value="25" min="5" max="100" style="width:60px; padding:4px; font-size:12px;"></label>
+            <button class="btn-top" style="background:var(--joy-blue); padding:5px 10px;" onclick="renderControlTable()">تحديث</button>
+        </div>
+        <div class="no-print" style="display:flex; gap:8px; margin-bottom:10px;">
+            <button class="btn-top" style="background:var(--danger); flex:1;" onclick="executeNativePrint('landscape', 'control-wrap')"><i class="fa fa-print"></i> طباعة الكشف</button>
+            <button class="btn-top" style="background:var(--success); flex:1;" onclick="exportControlExcel()"><i class="fa fa-file-excel"></i> تصدير إكسل</button>
+        </div>
+        <div class="report-table-wrap" id="control-wrap" style="background:transparent; padding:0; border:none; max-height: 55vh; overflow-y: auto; overflow-x: auto;"></div>
+        <button class="btn-top no-print" style="background:#7f8c8d; width:100%; margin-top:15px; font-size:15px;" onclick="closeModal('mod-control')">إغلاق النافذة</button>
+    </div>
+</div>
+
+<div id="mod-clear" class="overlay">
+    <div class="popup" style="border-top: 5px solid var(--danger);">
+        <h3 style="color:var(--danger)"><i class="fa fa-trash-alt"></i> مسح فصل / مادة</h3>
+        <div style="display:flex; gap:5px; margin-bottom:10px;"><select id="clr-grade" class="sel-box"><option>الأول الإعدادي</option><option>الثاني الإعدادي</option><option>الثالث الإعدادي</option></select><select id="clr-class" class="sel-box"></select></div>
+        <select id="clr-subject" class="sel-box" style="margin-bottom:15px; border-color:var(--danger);"><option value="all" style="color:var(--danger); font-weight:bold;">مسح من جميع المواد</option><option value="اللغة العربية">اللغة العربية</option><option value="اللغة الإنجليزية">اللغة الإنجليزية</option><option value="الدراسات الاجتماعية">الدراسات الاجتماعية</option><option value="الرياضيات">الرياضيات</option><option value="العلوم">العلوم</option><option value="التربية الدينية">التربية الدينية</option><option value="التربية الفنية">التربية الفنية</option><option value="التربية الموسيقية">التربية الموسيقية</option></select>
+        <div style="text-align:right; font-size:13px; margin-bottom:15px; padding:10px; background:#ffcccc; border-radius:8px;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="clr-stds" style="width:20px; height:20px; margin:0;"> <strong>حذف أسماء الطلاب نهائياً</strong></label></div>
+        <input type="password" id="clr-pin" placeholder="أدخل الكود السري (0000)" style="margin-bottom:10px;">
+        <div class="popup-btns"><button class="p-btn b-red" onclick="executeClear()">تنفيذ المسح</button><button class="p-btn b-exit" onclick="closeModal('mod-clear')">إلغاء</button></div>
+    </div>
+</div>
+
+<div id="custom-confirm" class="overlay" style="z-index: 7000;">
+    <div class="popup" style="border-top:5px solid var(--joy-blue);">
+        <h3 id="custom-confirm-title" style="color:var(--primary);">تأكيد</h3>
+        <p id="custom-confirm-msg" style="margin:15px 0; font-size:14px; font-weight:bold; color:var(--primary); white-space: pre-wrap; line-height: 1.6;"></p>
+        <div class="popup-btns"><button class="p-btn" id="custom-confirm-btn-yes" onclick="executeCustomConfirm()">موافق</button><button class="p-btn b-exit" onclick="closeModal('custom-confirm')">إلغاء</button></div>
+    </div>
+</div>
+
+<div id="waModal" class="overlay">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3 style="color:var(--whatsapp); margin-top:0; text-align:center;"><i class="fab fa-whatsapp"></i> إرسال إشعار للجروب</h3>
+        <p style="font-size:11px; color:#777; margin-bottom:8px;">الطلاب المحددين سيتم إرسال أسمائهم في كشف الغياب:</p>
+        <div class="wa-list-box" id="wa-students-list"></div>
+        <textarea id="wa-custom-msg" rows="3" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; font-family:'Cairo'; font-size:12px; margin-bottom:12px;" placeholder="اكتب رسالة إضافية أسفل الكشف (اختياري)"></textarea>
+        <div style="display:flex; gap:8px;"><button class="btn-top" style="background:var(--whatsapp); flex:2;" onclick="sendBulkWhatsApp()"><i class="fa fa-paper-plane"></i> تجهيز وإرسال</button><button class="btn-top" style="background:#7f8c8d; flex:1;" onclick="closeModal('waModal')">إلغاء</button></div>
+    </div>
+</div>
+
+<div id="searchModal" class="overlay">
+    <div class="modal-content" style="max-width: 450px;">
+        <h3 style="color:var(--primary); margin-top:0; text-align:center;"><i class="fa fa-id-card" style="color:var(--gold)"></i> محرك بحث شئون الطلبة</h3>
+        <input type="text" id="search-student-input" placeholder="اكتب اسم الطالب للبحث..." oninput="performStudentSearch()">
+        <div id="search-results-container" class="search-results-box"></div>
+        <div id="student-profile-card" class="student-profile-card">
+            <div class="sp-header"><div class="sp-icon" id="sp-icon"><i class="fa fa-user"></i></div><div><h4 class="sp-name" id="sp-name">اسم الطالب</h4><div class="sp-tags" id="sp-tags"></div></div></div>
+            <div class="sp-stats-grid"><div class="sp-stat-box"><div class="sp-stat-num" id="sp-month-abs">0</div><div class="sp-stat-label">غياب الشهر الحالي</div></div><div class="sp-stat-box"><div class="sp-stat-num" id="sp-term-abs">0</div><div class="sp-stat-label">إجمالي غياب الترم</div></div></div>
+            <div class="sp-dates"><span class="sp-dates-title"><i class="fa fa-calendar-times"></i> تواريخ الغياب في هذا الترم:</span><span id="sp-dates-list" style="color:#333; font-weight:bold;">لا يوجد غياب</span></div>
+        </div>
+        <button class="btn-top" style="background:#7f8c8d; width:100%; margin-top:15px;" onclick="closeModal('searchModal')">إغلاق النافذة</button>
+    </div>
+</div>
+
+<div id="reportsModal" class="overlay">
+    <div class="modal-content" style="max-width: 950px;">
+        <h3 style="color:var(--primary); margin-top:0; text-align:center;" class="no-print"><i class="fa fa-file-invoice"></i> التقارير والسجلات الرسمية</h3>
+        <div class="report-tabs no-print"><button class="tab-btn active" onclick="switchReportTab('tab-5solouk', this)">سجل 5 سلوك</button><button class="tab-btn" onclick="switchReportTab('tab-range', this)">حصر فترة محددة</button><button class="tab-btn" onclick="switchReportTab('tab-warn', this)">سجل الإنذارات</button></div>
+
+        <div id="tab-5solouk" class="report-section active">
+            <div class="no-print" style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:10px; background:#f4f6f8; padding:8px; border-radius:8px;">
+                <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:var(--primary);">شهر السجل:<input type="month" id="rep-5solouk-month" style="width:140px; padding:4px; font-size:12px;"></label>
+                <span style="color:#ccc;">|</span>
+                <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:var(--primary);">أسماء بالصفحة:<input type="number" id="solouk-rows" value="20" min="5" max="100" style="width:60px; padding:4px; font-size:12px;"></label>
+                <button class="btn-top" style="background:var(--joy-blue); padding:5px 10px;" onclick="generate5SoloukReport()">تحديث</button>
+            </div>
+            <div class="no-print" style="display:flex; gap:8px; margin-bottom:10px;">
+                <button class="btn-top" style="background:var(--danger); flex:1;" onclick="executeNativePrint('landscape', 'soloukReportWrap')"><i class="fa fa-print"></i> طباعة السجل</button>
+                <button class="btn-top" style="background:var(--success); flex:1;" onclick="export5SoloukExcel()"><i class="fa fa-file-excel"></i> تصدير إكسل</button>
+            </div>
+            <div class="report-table-wrap" id="soloukReportWrap" style="background:transparent; padding:0; border:none; max-height: 50vh; overflow-y: auto;"></div>
+        </div>
+
+        <div id="tab-range" class="report-section">
+            <div class="no-print" style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:10px; background:#f4f6f8; padding:8px; border-radius:8px; flex-wrap:wrap;">
+                <label style="font-weight:bold; color:var(--primary); font-size:12px;">من:</label><input type="date" id="range-start" style="width:110px; padding:4px; font-size:11px;">
+                <label style="font-weight:bold; color:var(--primary); font-size:12px;">إلى:</label><input type="date" id="range-end" style="width:110px; padding:4px; font-size:11px;">
+                <span style="color:#ccc;">|</span>
+                <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:var(--primary); font-size:12px;">الأسماء:<input type="number" id="range-rows" value="25" min="5" max="100" style="width:50px; padding:4px; font-size:12px;"></label>
+                <button class="btn-top" style="background:var(--joy-blue); padding:5px 10px;" onclick="generateRangeReport()">تحديث</button>
+            </div>
+            <div class="no-print" style="display:flex; gap:8px; margin-bottom:10px;">
+                <button class="btn-top" style="background:var(--danger); flex:1;" onclick="executeNativePrint('portrait', 'rangeReportWrap')"><i class="fa fa-print"></i> طباعة الحصر</button>
+                <button class="btn-top" style="background:var(--success); flex:1;" onclick="exportRangeExcel()"><i class="fa fa-file-excel"></i> تصدير إكسل</button>
+            </div>
+            <div class="report-table-wrap" id="rangeReportWrap" style="background:transparent; padding:0; border:none; max-height: 50vh; overflow-y: auto;"></div>
+        </div>
+
+        <div id="tab-warn" class="report-section">
+            <div class="no-print" style="display:flex; gap:8px; align-items:center;">
+                <input type="month" id="warn-month-input" style="flex:2;">
+                <button class="btn-top" style="background:var(--danger); flex:1;" onclick="generateWarnings()"><i class="fa fa-exclamation-triangle"></i> فحص الإنذارات</button>
+            </div>
+            <p class="no-print" style="font-size:11px; color:#777; margin:8px 0;">يتم إصدار إنذار للطالب الذي يتجاوز (3 أيام غياب) في الشهر المختار. <span style="color:var(--danger);">الإجازات لا تحسب كغياب.</span></p>
+            <div class="report-table-wrap" id="warnReportWrap" style="background:white; padding:10px;">
+                <table class="report-table" id="warnTable" style="border:1px solid #ccc; width:100%;">
+                    <thead><tr><th style="border:1px solid #ccc;">م</th><th style="border:1px solid #ccc;">اسم الطالب</th><th style="border:1px solid #ccc;">الغياب</th><th style="border:1px solid #ccc;" class="no-print">الإجراء</th></tr></thead>
+                    <tbody id="warnBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <button class="btn-top no-print" style="background:#7f8c8d; width:100%; margin-top:15px;" onclick="closeModal('reportsModal')">إغلاق النافذة</button>
+    </div>
+</div>
+
+<script>
+    const SB_URL = 'https://ytrvkwoukjqniaudltvz.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0cnZrd291a2pxbmlhdWRsdHZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNjczODQsImV4cCI6MjA4NTg0MzM4NH0.l6DFg5XtsgpgNiYtIzPIzbSx-bWTFoQss2r_fHocz-I';
+    let sb = null;
+
+    let USER = null; let IS_MANAGER = false; let DB = { stds: [], att: {}, info: {}, wDates: {}, teacherLeaves: [], publicHolidays: [] }; 
+    let studentsList = []; let currentStage = 'prep'; 
+    let currentConfirmCallback = null;
+    let showOnlyAbsent = false; 
+    let attendanceChartInstance = null; 
+
+    window.onload = function() {
+        USER = localStorage.getItem('ACTIVE_USER');
+        if(!USER) { window.location.href = "index.html"; return; }
+        if(window.supabase) { try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e){} }
+        
+        document.getElementById('dateSelect').valueAsDate = new Date();
+        document.getElementById('range-start').valueAsDate = new Date();
+        document.getElementById('range-end').valueAsDate = new Date();
+        
+        const today = new Date(); const yyyyMm = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+        document.getElementById('rep-5solouk-month').value = yyyyMm;
+        document.getElementById('warn-month-input').value = yyyyMm;
+
+        let o=""; for(let i=1;i<=20;i++) o+=`<option value="${i}">فصل ${i}</option>`;
+        document.getElementById('clr-class').innerHTML=o;
+
+        loadData();
+    };
+
+    function loadData() {
+        DB = { stds: [], att: {}, info: {}, wDates: {}, teacherLeaves: [], publicHolidays: [] };
+        let dataPrefix = 'APP_DATA_'; 
+        
+        if (USER === '1980') {
+            IS_MANAGER = true;
+            document.getElementById('mainBody').classList.add('manager-mode');
+            document.getElementById('app-header').innerHTML = `<span style="color:var(--danger); font-size:12px; background:#ffebee; padding:3px 6px; border-radius:5px;"><i class="fa fa-user-secret"></i> وضع الإدارة (الإعدادية)</span>`;
+            
+            for(let i=0; i<localStorage.length; i++) {
+                let key = localStorage.key(i); let isMatch = false;
+                if (key.startsWith('APP_DATA_') && !key.startsWith('APP_DATA_PRIM_')) isMatch = true;
+                if(isMatch && !key.includes('1980')) {
+                    let data = JSON.parse(localStorage.getItem(key));
+                    if(data.stds) DB.stds.push(...data.stds);
+                    if(data.att) Object.assign(DB.att, data.att);
+                    if(data.wDates) Object.assign(DB.wDates, data.wDates);
+                    if(data.teacherLeaves) DB.teacherLeaves.push(...data.teacherLeaves);
+                    if(data.publicHolidays) DB.publicHolidays.push(...data.publicHolidays);
+                }
+            }
+            DB.stds = DB.stds.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id && t.sub === v.sub))===i);
+        } else {
+            let savedData = localStorage.getItem(dataPrefix + USER);
+            if (savedData) {
+                let p = JSON.parse(savedData);
+                DB.stds = p.stds || []; DB.att = p.att || {}; DB.info = p.info || {}; DB.flt = p.flt || {};
+                DB.wDates = p.wDates || {}; DB.teacherLeaves = p.teacherLeaves || []; DB.publicHolidays = p.publicHolidays || [];
+                DB.saveKey = dataPrefix + USER;
+            }
+            document.getElementById('app-header').innerText = `معلم: ${DB.info.name || ''} | مدرسة: ${DB.info.sch || ''}`;
+        }
+
+        let gSet = new Set(); let cSet = new Set(); let subSet = new Set();
+        DB.stds.forEach(s => { gSet.add(s.g); cSet.add(s.c); subSet.add(s.sub); });
+
+        let gOpts = ''; Array.from(gSet).sort().forEach(g => gOpts += `<option value="${g}">${g}</option>`);
+        let cOpts = ''; Array.from(cSet).sort((a,b)=>a-b).forEach(c => cOpts += `<option value="${c}">فصل ${c}</option>`);
+        let subOpts = ''; Array.from(subSet).sort().forEach(sub => subOpts += `<option value="${sub}">${sub}</option>`);
+
+        document.getElementById('gradeSelect').innerHTML = gOpts || '<option value="">لا توجد بيانات</option>';
+        document.getElementById('classSelect').innerHTML = cOpts || '<option value="">لا توجد بيانات</option>';
+        document.getElementById('subjectSelect').innerHTML = subOpts || '<option value="">لا توجد بيانات</option>';
+
+        if(!IS_MANAGER && DB.flt) {
+            if(Array.from(gSet).includes(DB.flt.g)) document.getElementById('gradeSelect').value = DB.flt.g;
+            if(Array.from(cSet).includes(DB.flt.c)) document.getElementById('classSelect').value = DB.flt.c;
+            if(Array.from(subSet).includes(DB.flt.sub)) document.getElementById('subjectSelect').value = DB.flt.sub;
+        }
+        render();
+    }
+
+    function saveData(notify = true) {
+        if(!IS_MANAGER) {
+            DB.flt.g = document.getElementById('gradeSelect').value; DB.flt.c = document.getElementById('classSelect').value; DB.flt.sub = document.getElementById('subjectSelect').value;
+            let fullDB = JSON.parse(localStorage.getItem(DB.saveKey)) || { stds: [], att: {}, wDates: {}, teacherLeaves: [], publicHolidays: [] };
+            fullDB.att = DB.att; fullDB.flt = DB.flt; fullDB.wDates = DB.wDates; fullDB.teacherLeaves = DB.teacherLeaves; fullDB.publicHolidays = DB.publicHolidays;
+            localStorage.setItem(DB.saveKey, JSON.stringify(fullDB));
+            if(sb) { try { sb.from('backups').upsert({ mobile: USER, school_data: fullDB }, { onConflict: 'mobile' }); } catch(e) {} }
+        }
+        if(notify) showToast('تم الحفظ بنجاح', 'success');
+    }
+
+    function goBack() { window.location.href = "taqeem.html"; }
+    let toastTimer;
+    function showToast(msg, type='success', duration=2000) { const t = document.getElementById('custom-toast'); document.getElementById('toast-msg').innerText = msg; t.className = `show ${type}`; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = '', duration); }
+
+    function toggleExtraActions() {
+        const panel = document.getElementById('extra-actions-panel'); const btn = document.getElementById('btn-more-opts');
+        if (panel.style.display === 'none' || panel.style.display === '') { panel.style.display = 'flex'; btn.innerHTML = '<i class="fas fa-caret-up"></i> إخفاء الأدوات'; btn.style.background = '#2c3e50'; } 
+        else { panel.style.display = 'none'; btn.innerHTML = '<i class="fas fa-caret-down"></i> أدوات إضافية'; btn.style.background = 'linear-gradient(45deg, #7f8c8d, #95a5a6)'; }
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function showCustomConfirm(title, message, callback, btnText = 'نعم', btnClass = 'b-save') { document.getElementById('custom-confirm-title').innerHTML = title; document.getElementById('custom-confirm-msg').innerText = message; const yesBtn = document.getElementById('custom-confirm-btn-yes'); yesBtn.className = `p-btn ${btnClass}`; yesBtn.innerText = btnText; currentConfirmCallback = callback; openModal('custom-confirm'); }
+    function executeCustomConfirm() { if (currentConfirmCallback) { currentConfirmCallback(); } closeModal('custom-confirm'); }
+
+    // 🌟 منطق إجازات المعلم والعطلات الرسمية 🌟
+    function isTeacherOnLeave(dateStr) {
+        if (!DB.teacherLeaves || DB.teacherLeaves.length === 0) return false;
+        const checkDate = new Date(dateStr).setHours(0,0,0,0);
+        for (let l of DB.teacherLeaves) { const start = new Date(l.start).setHours(0,0,0,0); const end = new Date(l.end).setHours(0,0,0,0); if (checkDate >= start && checkDate <= end) return l.type; }
+        return false;
+    }
+
+    function isPublicHoliday(dateStr) {
+        if (!DB.publicHolidays || DB.publicHolidays.length === 0) return false;
+        const checkDate = new Date(dateStr).setHours(0,0,0,0);
+        for (let h of DB.publicHolidays) { const start = new Date(h.start).setHours(0,0,0,0); const end = new Date(h.end).setHours(0,0,0,0); if (checkDate >= start && checkDate <= end) return h.name; }
+        return false;
+    }
+
+    function openTeacherLeaveModal() {
+        if(IS_MANAGER) return showToast('هذه الصلاحية للمعلم فقط', 'error');
+        document.getElementById('t-leave-start').valueAsDate = new Date(); document.getElementById('t-leave-end').valueAsDate = new Date();
+        renderTeacherLeaves(); openModal('mod-teacher-leave');
+    }
+
+    function saveTeacherLeave() {
+        const type = document.getElementById('t-leave-type').value; const start = document.getElementById('t-leave-start').value; const end = document.getElementById('t-leave-end').value;
+        if (!start || !end) return showToast('الرجاء تحديد التواريخ', 'error'); if (new Date(start) > new Date(end)) return showToast('البداية قبل النهاية', 'error');
+        if(!DB.teacherLeaves) DB.teacherLeaves = [];
+        DB.teacherLeaves.push({ id: Date.now(), type, start, end });
+        saveData(false); renderTeacherLeaves(); render(); showToast('تم حفظ إجازتك بنجاح', 'success');
+    }
+
+    function deleteTeacherLeave(id) { DB.teacherLeaves = DB.teacherLeaves.filter(l => l.id !== id); saveData(false); renderTeacherLeaves(); render(); showToast('تم الحذف', 'success'); }
+
+    function renderTeacherLeaves() {
+        const listWrap = document.getElementById('t-leave-list');
+        if (!DB.teacherLeaves || DB.teacherLeaves.length === 0) { listWrap.innerHTML = '<p style="text-align:center; color:#999; font-size:12px;">لا توجد إجازات مسجلة لك</p>'; return; }
+        let html = '';
+        DB.teacherLeaves.sort((a,b) => new Date(b.start) - new Date(a.start)).forEach(l => {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee; font-size:12px; font-weight:bold; color:var(--primary);"><div><span style="color:#9b59b6;">إجازة ${l.type}</span> <br> <span style="color:#777; font-size:10px;">من ${l.start} إلى ${l.end}</span></div><button onclick="deleteTeacherLeave(${l.id})" style="background:var(--danger); color:white; border:none; padding:5px 8px; border-radius:5px; cursor:pointer;"><i class="fa fa-trash"></i></button></div>`;
+        });
+        listWrap.innerHTML = html;
+    }
+
+    function openPublicHolidaysModal() {
+        if(IS_MANAGER) return showToast('هذه الصلاحية للمعلم فقط', 'error');
+        document.getElementById('h-start').valueAsDate = new Date(); document.getElementById('h-end').valueAsDate = new Date(); document.getElementById('h-name').value = '';
+        renderPublicHolidays(); openModal('mod-public-holidays');
+    }
+
+    function savePublicHoliday() {
+        const name = document.getElementById('h-name').value.trim(); const start = document.getElementById('h-start').value; const end = document.getElementById('h-end').value;
+        if (!name) return showToast('اكتب اسم المناسبة', 'error'); if (!start || !end) return showToast('حدد التواريخ', 'error'); if (new Date(start) > new Date(end)) return showToast('البداية قبل النهاية', 'error');
+        if(!DB.publicHolidays) DB.publicHolidays = [];
+        DB.publicHolidays.push({ id: Date.now(), name, start, end });
+        saveData(false); renderPublicHolidays(); render(); showToast('تم تسجيل العطلة', 'success');
+    }
+
+    function deletePublicHoliday(id) { DB.publicHolidays = DB.publicHolidays.filter(h => h.id !== id); saveData(false); renderPublicHolidays(); render(); showToast('تم الحذف', 'success'); }
+
+    function renderPublicHolidays() {
+        const listWrap = document.getElementById('h-list');
+        if (!DB.publicHolidays || DB.publicHolidays.length === 0) { listWrap.innerHTML = '<p style="text-align:center; color:#999; font-size:12px;">لا توجد عطلات مسجلة</p>'; return; }
+        let html = '';
+        DB.publicHolidays.sort((a,b) => new Date(b.start) - new Date(a.start)).forEach(h => {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee; font-size:12px; font-weight:bold; color:var(--primary);"><div><span style="color:#e67e22;">${h.name}</span> <br> <span style="color:#777; font-size:10px;">من ${h.start} إلى ${h.end}</span></div><button onclick="deletePublicHoliday(${h.id})" style="background:var(--danger); color:white; border:none; padding:5px 8px; border-radius:5px; cursor:pointer;"><i class="fa fa-trash"></i></button></div>`;
+        });
+        listWrap.innerHTML = html;
+    }
+
+    // 🌟 منطق أرشيف الشهور 🌟
+    function openArchiveModal() {
+        const grid = document.getElementById('archive-months-grid');
+        document.getElementById('archive-days-container').style.display = 'none';
+        const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+        let html = '';
+        months.forEach((m, i) => {
+            let mNum = String(i + 1).padStart(2, '0');
+            html += `<button class="month-btn" onclick="showDaysOfMonth('${mNum}', '${m}')">${m}</button>`;
+        });
+        grid.innerHTML = html;
+        openModal('mod-archive');
+    }
+
+    function showDaysOfMonth(mNum, mName) {
+        document.getElementById('archive-month-title').innerText = `أيام الرصد في (${mName})`;
+        const year = new Date().getFullYear(); // الافتراضي السنة الحالية، ممكن تتطور لاحقاً
+        const targetPrefix = `${year}-${mNum}`;
+        const sub = document.getElementById('subjectSelect').value; const grade = document.getElementById('gradeSelect').value; const cls = document.getElementById('classSelect').value;
+        const classStds = (DB.stds || []).filter(s => s.g === grade && s.c === cls).map(s => s.id);
+        
+        let daysSet = new Set();
+        Object.keys(DB.att).forEach(key => {
+            const parts = key.split('_');
+            if (parts.length >= 3 && parts[0].startsWith(targetPrefix) && parts[1] === sub && classStds.includes(Number(parts[2]))) {
+                daysSet.add(parts[0]);
+            }
+        });
+
+        const listWrap = document.getElementById('archive-days-list');
+        if (daysSet.size === 0) { listWrap.innerHTML = '<p style="color:#999; font-size:12px; width:100%; text-align:center;">لم يتم رصد أي غياب في هذا الشهر</p>'; } 
+        else {
+            let html = '';
+            Array.from(daysSet).sort().forEach(d => {
+                let hasAbsent = false;
+                classStds.forEach(sid => { if (DB.att[`${d}_${sub}_${sid}`] === 'absent') hasAbsent = true; });
+                const btnClass = hasAbsent ? 'day-btn has-absent' : 'day-btn';
+                const dObj = new Date(d);
+                html += `<button class="${btnClass}" onclick="openDayDetails('${d}')">${dObj.getDate()}/${dObj.getMonth()+1}</button>`;
+            });
+            listWrap.innerHTML = html;
+        }
+        document.getElementById('archive-days-container').style.display = 'block';
+    }
+
+    function openDayDetails(dateStr) {
+        const sub = document.getElementById('subjectSelect').value; const grade = document.getElementById('gradeSelect').value; const cls = document.getElementById('classSelect').value;
+        const list = (DB.stds || []).filter(s => s.g === grade && s.c === cls && s.sub === sub);
+        
+        let absents = [];
+        list.forEach(s => { if (DB.att[`${dateStr}_${sub}_${s.id}`] === 'absent') absents.push(s.name); });
+        
+        document.getElementById('dd-date').innerText = dateStr;
+        document.getElementById('dd-count').innerText = absents.length;
+        
+        const listWrap = document.getElementById('dd-list');
+        if (absents.length === 0) { listWrap.innerHTML = '<div style="color:var(--success); font-weight:bold; text-align:center;">الجميع حاضر في هذا اليوم 🎉</div>'; }
+        else {
+            let html = '<ol style="margin:0; padding-right:20px;">';
+            absents.sort().forEach(n => html += `<li style="margin-bottom:5px; color:var(--primary); font-weight:bold;">${n}</li>`);
+            html += '</ol>';
+            listWrap.innerHTML = html;
+        }
+        openModal('mod-day-details');
+    }
+
+    function executeClear() {
+        if(document.getElementById('clr-pin').value !== '0000') return showToast('الكود السري غير صحيح!', 'error');
+        const g = document.getElementById('clr-grade').value; const c = document.getElementById('clr-class').value; const sub = document.getElementById('clr-subject').value; const isDeleteStds = document.getElementById('clr-stds').checked;
+        if (sub === 'all') {
+            const classStdsIds = DB.stds.filter(s => s.g === g && s.c === c).map(s => s.id);
+            if (isDeleteStds) { DB.stds = DB.stds.filter(s => !(s.g === g && s.c === c)); Object.keys(DB.att).forEach(key => { const sid = key.split('_')[2]; if (classStdsIds.includes(Number(sid)) || classStdsIds.includes(String(sid))) { delete DB.att[key]; } }); } 
+            else { Object.keys(DB.att).forEach(key => { const sid = key.split('_')[2]; if (classStdsIds.includes(Number(sid)) || classStdsIds.includes(String(sid))) { delete DB.att[key]; } }); }
+        } else {
+            const classStdsIds = DB.stds.filter(s => s.g === g && s.c === c && s.sub === sub).map(s => s.id);
+            if (isDeleteStds) { DB.stds = DB.stds.filter(s => !(s.g === g && s.c === c && s.sub === sub)); Object.keys(DB.att).forEach(key => { const [d, s, sid] = key.split('_'); if (s === sub && (classStdsIds.includes(Number(sid)) || classStdsIds.includes(String(sid)))) { delete DB.att[key]; } }); } 
+            else { Object.keys(DB.att).forEach(key => { const [d, s, sid] = key.split('_'); if (s === sub && (classStdsIds.includes(Number(sid)) || classStdsIds.includes(String(sid)))) { delete DB.att[key]; } }); }
+        }
+        let fullDB = JSON.parse(localStorage.getItem(DB.saveKey)); fullDB.stds = DB.stds; fullDB.att = DB.att; localStorage.setItem(DB.saveKey, JSON.stringify(fullDB)); closeModal('mod-clear'); loadData(); showToast('تم المسح', 'success');
+    }
+
+    function getMonthAbsenceCount(sid, dateStr) {
+        let count = 0; const currentMonth = dateStr.substring(0, 7); 
+        Object.keys(DB.att).forEach(key => { if (key.includes(`_${sid}`) && !key.includes('_p') && key.startsWith(currentMonth)) { if (DB.att[key] === 'absent') count++; } });
+        return count;
+    }
+
+    function toggleAbsentFilter() {
+        showOnlyAbsent = !showOnlyAbsent; const btn = document.getElementById('btn-filter-abs');
+        if(showOnlyAbsent) { btn.style.background = 'linear-gradient(45deg, #c0392b, #e74c3c)'; btn.innerHTML = '<i class="fas fa-filter"></i> عرض الغائبين فقط'; } 
+        else { btn.style.background = 'linear-gradient(45deg, #34495e, #2c3e50)'; btn.innerHTML = '<i class="fas fa-filter"></i> فلتر الغياب'; } render();
+    }
+
+    function sendToAffairs() {
+        if(studentsList.length === 0) return showToast("اختر الفصل أولاً", "error");
+        const dateVal = document.getElementById('dateSelect').value; const sub = document.getElementById('subjectSelect').value; const grade = document.getElementById('gradeSelect').value; const cls = document.getElementById('classSelect').value;
+        let p = 0, a = 0; let absentNames = []; let absentPeriods = [];
+        studentsList.forEach(s => {
+            const status = DB.att[`${dateVal}_${sub}_${s.id}`] || ''; const periodVal = DB.att[`${dateVal}_${sub}_${s.id}_p`] || '';
+            if(status === 'present') p++; else if(status === 'absent') { a++; absentNames.push(s.name); }
+            if(status !== 'absent' && periodVal !== '') { absentPeriods.push(`${s.name} (حصة ${periodVal})`); }
+        });
+        let msg = `📊 *تقرير الحضور والغياب اليومي*\n📅 التاريخ: ${dateVal}\n🏫 الصف: ${grade} | فصل: ${cls}\n✅ الحضور: ${p}\n❌ الغياب الكلي: ${a}\n`;
+        if(absentNames.length > 0) { msg += `\n*أسماء غياب اليوم كامل:*\n` + absentNames.map((n,i)=>`${i+1}- ${n}`).join('\n'); }
+        if(absentPeriods.length > 0) { msg += `\n\n*غياب الحصص (هروب):*\n` + absentPeriods.map((n,i)=>`- ${n}`).join('\n'); }
+        msg += `\n\nمرسل من المُعلم: ${DB.info.name || ''}`; window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function openChartModal() {
+        if(studentsList.length === 0) return showToast("اختر الفصل أولاً", "error");
+        const sub = document.getElementById('subjectSelect').value; const dateVal = document.getElementById('dateSelect').value;
+        let labels = []; let absData = []; let presData = []; let dObj = new Date(dateVal);
+        for(let i=6; i>=0; i--) {
+            let curr = new Date(dObj); curr.setDate(curr.getDate() - i); if(curr.getDay() === 5) continue;
+            let dStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+            labels.push(`${curr.getDate()}/${curr.getMonth()+1}`); let p=0, a=0;
+            studentsList.forEach(s => { let st = DB.att[`${dStr}_${sub}_${s.id}`]; if(st === 'present') p++; else if(st === 'absent') a++; });
+            absData.push(a); presData.push(p);
+        }
+        document.getElementById('chartModal').style.display = 'flex'; const ctx = document.getElementById('attendanceChart').getContext('2d');
+        if(attendanceChartInstance) attendanceChartInstance.destroy();
+        attendanceChartInstance = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: 'الغياب', data: absData, backgroundColor: '#e74c3c', borderRadius: 4 }, { label: 'الحضور', data: presData, backgroundColor: '#27ae60', borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Cairo' } } } } } });
+    }
+
+    function render() {
+        const grade = document.getElementById('gradeSelect').value; const cls = document.getElementById('classSelect').value; const sub = document.getElementById('subjectSelect').value; const dateVal = document.getElementById('dateSelect').value; const container = document.getElementById('attendanceList');
+        if(!grade || !cls || !sub || !dateVal) { container.innerHTML = '<div style="text-align:center; color:#999; margin-top:30px; font-weight:bold; font-size:12px;">الرجاء اختيار كافة البيانات لتسجيل الغياب</div>'; return; }
+        
+        // 🌟 فحص العطلات الرسمية 🌟
+        const pHoliday = isPublicHoliday(dateVal);
+        if (pHoliday) {
+            container.innerHTML = `<div style="text-align:center; color:#e67e22; margin-top:30px; font-weight:bold; font-size:15px; background:#fdf3e8; padding:20px; border-radius:10px; border:2px dashed #e67e22;">
+                <i class="fa fa-flag" style="font-size:50px; display:block; margin-bottom:10px;"></i>
+                هذا اليوم عطلة رسمية<br>(${pHoliday})
+            </div>`;
+            recalcStats(true); return;
+        }
+
+        // 🌟 فحص إجازة المعلم 🌟
+        const tLeaveType = isTeacherOnLeave(dateVal);
+        if (tLeaveType) {
+            container.innerHTML = `<div style="text-align:center; color:#9b59b6; margin-top:30px; font-weight:bold; font-size:15px; background:#fdf3ff; padding:20px; border-radius:10px; border:2px dashed #9b59b6;">
+                <i class="fa fa-umbrella-beach" style="font-size:50px; display:block; margin-bottom:10px;"></i>
+                لا يمكن تسجيل الغياب اليوم<br>أنت مسجل في (إجازة ${tLeaveType})
+            </div>`;
+            recalcStats(true); return;
+        }
+
+        const selectedDate = new Date(dateVal);
+        if (selectedDate.getDay() === 5) { 
+            showToast('يوم الجمعة عطلة رسمية!', 'error');
+            container.innerHTML = '<div style="text-align:center; color:#c0392b; margin-top:30px; font-weight:bold; font-size:14px;"><i class="fa fa-ban" style="font-size:40px; display:block; margin-bottom:10px;"></i>يوم الجمعة عطلة رسمية<br>يرجى اختيار يوم عمل صالح للرصد.</div>';
+            recalcStats(true); return;
+        }
+
+        if(!IS_MANAGER) { DB.flt.g = grade; DB.flt.c = cls; DB.flt.sub = sub; let fullDB = JSON.parse(localStorage.getItem(DB.saveKey)); fullDB.flt = DB.flt; localStorage.setItem(DB.saveKey, JSON.stringify(fullDB)); }
+        studentsList = DB.stds.filter(s => s.g === grade && s.c === cls && s.sub === sub);
+        if(studentsList.length === 0) { container.innerHTML = '<div style="text-align:center; color:#e74c3c; margin-top:30px; font-weight:bold; font-size:13px;">لا يوجد طلاب مسجلين في هذا الفصل!</div>'; recalcStats(true); return; }
+        
+        studentsList.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+        container.innerHTML = ''; let p=0, a=0, l=0, d=0, leaveCount=0;
+
+        let periodOptions = `<option value="">حصة</option>`;
+        for(let i=1; i<=7; i++) periodOptions += `<option value="${i}">${i}</option>`;
+
+        studentsList.forEach((s, index) => {
+            const key = `${dateVal}_${sub}_${s.id}`; const status = DB.att[key] || ''; const periodVal = DB.att[`${key}_p`] || ''; const isDrop = status === 'dropout';
+            if(showOnlyAbsent && status !== 'absent') return;
+
+            const absCount = getMonthAbsenceCount(s.id, dateVal); const isFrequentAbsent = absCount >= 3;
+            let badgeHtml = '';
+            if (isFrequentAbsent) badgeHtml = `<span class="badge-warn">غياب (${absCount})</span>`;
+            if(s.sts && s.sts !== 'مستجد') { let badgeClass = 'badge-status'; if(s.sts === 'باق للإعادة') badgeClass += ' red'; else if(s.sts === 'دمج') badgeClass += ' purple'; else if(s.sts === 'منقول') badgeClass += ' orange'; badgeHtml += ` <span class="${badgeClass}">${s.sts}</span>`; }
+
+            if(status === 'present') p++; else if(status === 'absent') a++; else if(status === 'late') l++; else if(status === 'dropout') d++;
+
+            let waBtnClass = s.mob ? "btn-wa-icon active" : "btn-wa-icon disabled"; let waClick = s.mob ? `onclick="sendPrivateWhatsApp('${s.name}', '${s.mob}')"` : `onclick="showToast('لا يوجد رقم واتساب مسجل لهذا الطالب!', 'error')"`;
+
+            const row = document.createElement('div'); row.className = `student-row ${isDrop ? 'is-dropout' : ''} ${isFrequentAbsent ? 'freq-absent' : ''}`; row.id = `row-${s.id}`;
+            row.innerHTML = `
+                <div class="name-section"><span class="student-num">${index + 1}</span><div class="student-info">${s.name} ${badgeHtml}</div></div>
+                <div class="controls-section">
+                    <select class="period-sel" onchange="setPeriod('${s.id}', this.value)" title="غياب الحصة (الهروب)">
+                        <option value="">حصة</option>
+                        <option value="1" ${periodVal=='1'?'selected':''}>1</option><option value="2" ${periodVal=='2'?'selected':''}>2</option><option value="3" ${periodVal=='3'?'selected':''}>3</option><option value="4" ${periodVal=='4'?'selected':''}>4</option><option value="5" ${periodVal=='5'?'selected':''}>5</option><option value="6" ${periodVal=='6'?'selected':''}>6</option><option value="7" ${periodVal=='7'?'selected':''}>7</option>
+                    </select>
+                    <div class="status-group">
+                        <button class="status-btn ${status==='present'?'selected':''}" data-val="present" onclick="setStatus('${s.id}', 'present')">ح</button>
+                        <button class="status-btn ${status==='absent'?'selected':''}" data-val="absent" onclick="setStatus('${s.id}', 'absent')">غ</button>
+                        <button class="status-btn ${status==='late'?'selected':''}" data-val="late" onclick="setStatus('${s.id}', 'late')">ت</button>
+                        <button class="status-btn ${status==='dropout'?'selected':''}" data-val="dropout" onclick="setStatus('${s.id}', 'dropout')">م</button>
+                    </div>
+                    <button class="${waBtnClass}" ${waClick} title="مراسلة ولي الأمر خاص"><i class="fab fa-whatsapp"></i></button>
+                </div>`;
+            container.appendChild(row);
+        });
+
+        if(showOnlyAbsent && a === 0) { container.innerHTML = '<div style="text-align:center; color:var(--success); margin-top:30px; font-weight:bold; font-size:14px;"><i class="fa fa-check-circle" style="font-size:40px; display:block; margin-bottom:10px;"></i>لا يوجد طلاب غائبين اليوم!</div>'; }
+        document.getElementById('countTotal').innerText = studentsList.length; document.getElementById('countPresent').innerText = p; document.getElementById('countAbsent').innerText = a; document.getElementById('countLate').innerText = l; document.getElementById('countDrop').innerText = d;
+        saveData(false);
+    }
+
+    function setStatus(sid, newStatus) {
+        if(IS_MANAGER) return showToast('لا تملك صلاحية التعديل في وضع المدير', 'error');
+        const dateVal = document.getElementById('dateSelect').value;
+        if(isTeacherOnLeave(dateVal) || isPublicHoliday(dateVal)) return showToast('اليوم مغلق!', 'error');
+        const sub = document.getElementById('subjectSelect').value; const key = `${dateVal}_${sub}_${sid}`;
+        if(DB.att[key] === newStatus) delete DB.att[key]; else DB.att[key] = newStatus; 
+        render(); saveData(false);
+    }
+
+    function setPeriod(sid, periodVal) {
+        if(IS_MANAGER) return showToast('لا تملك صلاحية التعديل', 'error');
+        const dateVal = document.getElementById('dateSelect').value;
+        if(isTeacherOnLeave(dateVal) || isPublicHoliday(dateVal)) { render(); return showToast('اليوم مغلق!', 'error'); }
+        const sub = document.getElementById('subjectSelect').value; const key = `${dateVal}_${sub}_${sid}_p`;
+        if(periodVal === '') { delete DB.att[key]; } else { DB.att[key] = periodVal; showToast(`تم تسجيل غياب الحصة (${periodVal})`, 'success'); }
+        saveData(false);
+    }
+
+    function markAll(status) {
+        if(IS_MANAGER) return showToast('لا تملك صلاحية التعديل', 'error');
+        if(studentsList.length === 0) return;
+        const dateVal = document.getElementById('dateSelect').value;
+        if(isTeacherOnLeave(dateVal) || isPublicHoliday(dateVal)) return showToast('اليوم مغلق!', 'error');
+        const sub = document.getElementById('subjectSelect').value;
+        studentsList.forEach(s => { const key = `${dateVal}_${sub}_${s.id}`; if(DB.att[key] !== 'dropout') { DB.att[key] = status; } });
+        render(); showToast(status === 'present' ? 'تم تحضير جميع الطلاب' : 'تم تسجيل غياب الجميع', status === 'present' ? 'success' : 'error');
+        saveData(false);
+    }
+
+    function recalcStats(zeroOut = false) {
+        if(zeroOut) { document.getElementById('countTotal').innerText = '0'; document.getElementById('countPresent').innerText = '0'; document.getElementById('countAbsent').innerText = '0'; document.getElementById('countLate').innerText = '0'; document.getElementById('countDrop').innerText = '0'; return; }
+        const date = document.getElementById('dateSelect').value; const sub = document.getElementById('subjectSelect').value; let p=0, a=0, l=0, d=0;
+        studentsList.forEach(s => { const st = DB.att[`${date}_${sub}_${s.id}`]; if(st === 'present') p++; else if(st === 'absent') a++; else if(st === 'late') l++; else if(st === 'dropout') d++; });
+        document.getElementById('countPresent').innerText = p; document.getElementById('countAbsent').innerText = a; document.getElementById('countLate').innerText = l; document.getElementById('countDrop').innerText = d;
+    }
+
+    function sendPrivateWhatsApp(stdName, mob) {
+        let phone = mob.trim(); if(phone.startsWith('0')) phone = '2' + phone; const dateStr = document.getElementById('dateSelect').value;
+        let msg = `السيد ولي أمر الطالب/ة: ${stdName}\nنحيط سيادتكم علماً بغياب نجلكم عن الحضور للمدرسة اليوم الموافق (${dateStr}).\nيرجى المتابعة.`; window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function openWhatsAppModal() {
+        if(studentsList.length === 0) return showToast("اختر الفصل أولاً لتحديد الطلاب", "error");
+        const dateVal = document.getElementById('dateSelect').value; const sub = document.getElementById('subjectSelect').value; const listContainer = document.getElementById('wa-students-list'); listContainer.innerHTML = ''; let absenteesCount = 0;
+        studentsList.forEach((s) => { const status = DB.att[`${dateVal}_${sub}_${s.id}`] || ''; const isChecked = (status === 'absent') ? 'checked' : ''; if (status === 'absent') absenteesCount++; const row = document.createElement('div'); row.className = 'wa-std-row'; row.innerHTML = `<input type="checkbox" id="wa-chk-${s.id}" value="${s.name}" ${isChecked}><label for="wa-chk-${s.id}">${s.name}</label>`; listContainer.appendChild(row); });
+        document.getElementById('waModal').style.display = 'flex'; if(absenteesCount === 0) { showToast('لا يوجد طلاب غائبين في هذا اليوم', 'info'); }
+    }
+
+    function sendBulkWhatsApp() {
+        const dateStr = document.getElementById('dateSelect').value; const customMsg = document.getElementById('wa-custom-msg').value.trim(); let selectedNames = []; document.querySelectorAll('#wa-students-list input[type="checkbox"]:checked').forEach(chk => { selectedNames.push(chk.value); });
+        if (selectedNames.length === 0) return showToast('يرجى تحديد طالب واحد على الأقل', 'error');
+        let fullMessage = `*إشعار غياب*\nالسادة أولياء الأمور، غاب الطلاب الآتية أسماؤهم اليوم (${dateStr}):\n\n`; selectedNames.forEach((name, index) => { fullMessage += `${index + 1}- ${name}\n`; }); if (customMsg) fullMessage += `\nملاحظة: ${customMsg}\n`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(fullMessage)}`, '_blank'); closeModal('waModal');
+    }
+
+    function openSearchModal() { document.getElementById('search-student-input').value = ''; document.getElementById('search-results-container').innerHTML = ''; document.getElementById('search-results-container').style.display = 'none'; document.getElementById('student-profile-card').style.display = 'none'; document.getElementById('searchModal').style.display = 'flex'; setTimeout(()=> document.getElementById('search-student-input').focus(), 100); }
+
+    function performStudentSearch() {
+        const query = document.getElementById('search-student-input').value.trim(); const resBox = document.getElementById('search-results-container'); document.getElementById('student-profile-card').style.display = 'none';
+        if(query.length < 2) { resBox.style.display = 'none'; return; }
+        const matches = DB.stds.filter(s => s.name.includes(query)).slice(0, 10); 
+        if(matches.length === 0) { resBox.innerHTML = '<div style="padding:10px; color:#e74c3c; text-align:center;">لا يوجد طالب بهذا الاسم</div>'; resBox.style.display = 'block'; return; }
+        let html = ''; matches.forEach(s => { html += `<div class="search-item" onclick="viewStudentProfile('${s.id}')"><span>${s.name}</span><span style="color:#777; font-size:11px;">${s.g} - فصل ${s.c}</span></div>`; }); resBox.innerHTML = html; resBox.style.display = 'block';
+    }
+
+    function viewStudentProfile(sid) {
+        document.getElementById('search-results-container').style.display = 'none'; const student = DB.stds.find(s => s.id == sid); if(!student) return;
+        document.getElementById('sp-name').innerText = student.name; document.getElementById('sp-icon').innerHTML = student.gender === 'F' ? '<i class="fa fa-female"></i>' : '<i class="fa fa-male"></i>'; document.getElementById('sp-icon').style.background = student.gender === 'F' ? '#e84393' : '#0984e3';
+        let tagsHTML = `<span class="sp-tag">${student.g} - فصل ${student.c}</span><span class="sp-tag">${student.sub}</span>`;
+        if(student.sts && student.sts !== 'مستجد') tagsHTML += `<span class="sp-tag" style="color:var(--danger); border-color:var(--danger)">${student.sts}</span>`;
+        if(student.rel) tagsHTML += `<span class="sp-tag" style="background:#f3e5f5; color:#8e44ad; border-color:#e1bee7">${student.rel}</span>`;
+        document.getElementById('sp-tags').innerHTML = tagsHTML;
+        const today = new Date(); const currentMonthStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0'); const m = today.getMonth() + 1;
+        let termMonths = []; if (m >= 9 || m <= 1) termMonths = [9, 10, 11, 12, 1]; else termMonths = [2, 3, 4, 5, 6]; 
+        let monthAbs = 0; let termAbs = 0; let absDatesList = [];
+        Object.keys(DB.att).forEach(key => { if(key.includes(`_${student.sub}_${student.id}`) && !key.includes('_p') && DB.att[key] === 'absent') { const datePart = key.split('_')[0]; const attDate = new Date(datePart); if (datePart.startsWith(currentMonthStr)) monthAbs++; if (termMonths.includes(attDate.getMonth() + 1)) { termAbs++; absDatesList.push(`${attDate.getDate()}/${attDate.getMonth() + 1}`); } } });
+        document.getElementById('sp-month-abs').innerText = monthAbs; document.getElementById('sp-term-abs').innerText = termAbs;
+        if (absDatesList.length > 0) document.getElementById('sp-dates-list').innerText = absDatesList.join(' ، '); else document.getElementById('sp-dates-list').innerText = "طالب ممتاز! لم يسجل غياب هذا الترم."; document.getElementById('student-profile-card').style.display = 'block';
+    }
+
+    function openReportsModal() {
+        if(studentsList.length === 0) return showToast("اختر الفصل أولاً لتوليد التقارير", "error");
+        document.getElementById('reportsModal').style.display = 'flex'; generate5SoloukReport(); 
+    }
+
+    function switchReportTab(tabId, btn) {
+        document.querySelectorAll('.report-section').forEach(el => el.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active'); btn.classList.add('active');
+    }
+
+    function executeNativePrint(orient, containerId = null) {
+        let styleEl = document.getElementById('dynamic-print-style');
+        const currentCss = styleEl.innerHTML;
+        let printCss = ` @media print { @page { size: A4 ${orient}; margin: 5mm; } }`;
+        let printArea = document.getElementById('print-area');
+        if (!printArea) { printArea = document.createElement('div'); printArea.id = 'print-area'; document.body.appendChild(printArea); }
+        if (containerId) {
+            document.body.classList.add('print-modal-active'); const source = document.getElementById(containerId); printArea.innerHTML = source.innerHTML;
+            const origInputs = source.querySelectorAll('input, select'); const cloneInputs = printArea.querySelectorAll('input, select');
+            for (let i = 0; i < origInputs.length; i++) { if (cloneInputs[i]) cloneInputs[i].value = origInputs[i].value; }
+        } else { printArea.innerHTML = ''; }
+        styleEl.innerHTML = currentCss + printCss;
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => { styleEl.innerHTML = currentCss; if (containerId) { document.body.classList.remove('print-modal-active'); printArea.innerHTML = ''; } }, 1000);
+        }, 300);
+    }
+
+    // 🌟 سجل 5 سلوك 🌟
+    function generate5SoloukReport() {
+        const monthStr = document.getElementById('rep-5solouk-month').value; 
+        if(!monthStr) return; const sub = document.getElementById('subjectSelect').value; const grade = document.getElementById('gradeSelect').value; const cls = document.getElementById('classSelect').value;
+        const [year, month] = monthStr.split('-'); const daysInMonth = new Date(year, month, 0).getDate(); 
+        const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]; const mName = monthNames[parseInt(month) - 1];
+
+        let rowsPerPage = parseInt(document.getElementById('solouk-rows').value) || 20;
+        let totalPages = Math.ceil(studentsList.length / rowsPerPage);
+        let html = '';
+
+        if(studentsList.length === 0) { document.getElementById('soloukReportWrap').innerHTML = '<div style="text-align:center; padding:20px; color:red; font-weight:bold;">لا توجد أسماء في هذا الفصل</div>'; return; }
+
+        for (let p = 0; p < totalPages; p++) {
+            let pageStds = studentsList.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+            html += `<div class="sheet-page" style="background:white; padding:15px; margin-bottom:20px; border:1px solid #ccc; border-radius:8px;">`;
+            html += `<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px; font-weight:bold; font-size:13px; border-bottom: 2px solid #333; padding-bottom:10px;"><div style="text-align:right;">مديرية التربية والتعليم<br>مدرسة: ${DB.info.sch || '................'}</div><div style="text-align:center;"><h3 style="margin:0; color:var(--primary); font-size:20px;">سجل (5 سلوك) للمواظبة والانتظام</h3><p style="margin:5px 0 0 0; font-size:13px;">شهر (${mName} ${year}) | الصف: ${grade} | فصل: ${cls} | المادة: ${sub}</p></div><div style="text-align:left;">معلم المادة<br>${DB.info.name || '................'}</div></div>`;
+            html += `<table style="width:100%; border-collapse:collapse; font-size:12px; text-align:center; border:2px solid #000;"><thead><tr><th rowspan="2" style="border:1px solid #000; padding:4px;">م</th><th rowspan="2" style="border:1px solid #000; padding:4px; min-width:140px;">اسم الطالب</th>`;
+            for(let i=1; i<=daysInMonth; i++) { let d = new Date(year, parseInt(month)-1, i); html += `<th style="border:1px solid #000; padding:2px; ${d.getDay() === 5 ? 'background:#eee;' : ''}">${i}</th>`; }
+            html += `<th colspan="2" style="border:1px solid #000; background:#fff3e0;">مرات الغياب</th><th rowspan="2" style="border:1px solid #000; background:#fce4ec;">تأخير</th></tr><tr>`;
+            for(let i=1; i<=daysInMonth; i++) { html += `<th style="border:1px solid #000; padding:2px; font-size:10px;">يوم</th>`; }
+            html += `<th style="border:1px solid #000; background:#fff3e0; font-size:10px;">بعذر</th><th style="border:1px solid #000; background:#fff3e0; font-size:10px;">بدون</th></tr></thead><tbody>`;
+
+            pageStds.forEach((s, idx) => {
+                let actualIdx = (p * rowsPerPage) + idx + 1; let absCount = 0; let lateCount = 0;
+                html += `<tr><td style="border:1px solid #000; padding:4px;">${actualIdx}</td><td style="border:1px solid #000; padding:4px; text-align:right; font-weight:bold;">${s.name}</td>`;
+                for(let i=1; i<=daysInMonth; i++) {
+                    const dStr = `${monthStr}-${String(i).padStart(2, '0')}`;
+                    let st = DB.att[`${dStr}_${sub}_${s.id}`] || '';
+                    let d = new Date(year, parseInt(month)-1, i); let cell = '', bg = '';
+                    
+                    let tLeave = isTeacherOnLeave(dStr); let pDay = isPublicHoliday(dStr);
+                    if(d.getDay() === 5) { cell = '-'; bg = '#eee'; }
+                    else if(pHoliday) { cell = 'ع'; bg = '#fdf3e8'; }
+                    else if(tLeave) { cell = 'ج'; bg = '#f5eef8'; } 
+                    else if(st === 'present') cell = 'ح'; else if(st === 'absent') { cell = 'غ'; bg = '#ffebee'; absCount++; }
+                    else if(st === 'late') { cell = 'ت'; bg = '#fff8e1'; lateCount++; } else if(st === 'dropout') cell = 'م';
+                    
+                    html += `<td style="border:1px solid #000; padding:2px; background:${bg}; font-weight:bold;">${cell}</td>`;
+                }
+                html += `<td style="border:1px solid #000;"></td><td style="border:1px solid #000; font-weight:bold; color:var(--danger);">${absCount > 0 ? absCount : ''}</td><td style="border:1px solid #000; font-weight:bold; color:#c62828;">${lateCount > 0 ? lateCount : ''}</td></tr>`;
+            });
+            html += `</tbody></table><div style="display:flex; justify-content:space-between; margin-top:20px; font-weight:bold; font-size:14px;"><div>شئون الطلبة<br>.......................</div><div style="color:#999; font-size:11px; margin-top:15px;">صفحة ${p+1} من ${totalPages}</div><div>يعتمد، مدير المدرسة<br>.......................</div></div></div>`;
+        }
+        document.getElementById('soloukReportWrap').innerHTML = html;
+    }
+
+    function export5SoloukExcel() {
+        if(studentsList.length === 0) return showToast('لا توجد بيانات', 'error');
+        const monthStr = document.getElementById('rep-5solouk-month').value; if(!monthStr) return;
+        const sub = document.getElementById('subjectSelect').value; const cls = document.getElementById('classSelect').value;
+        const [year, month] = monthStr.split('-'); const daysInMonth = new Date(year, month, 0).getDate();
+        let header1 = ['م', 'اسم الطالب']; for(let i=1; i<=daysInMonth; i++) header1.push(i.toString()); header1.push('بعذر', 'بدون عذر', 'تأخير');
+        let data = [header1];
+
+        studentsList.forEach((s, idx) => {
+            let absCount = 0; let lateCount = 0; let row = [idx + 1, s.name];
+            for(let i=1; i<=daysInMonth; i++) {
+                const dStr = `${monthStr}-${String(i).padStart(2, '0')}`; let st = DB.att[`${dStr}_${sub}_${s.id}`] || '';
+                let d = new Date(year, parseInt(month)-1, i); let cell = '';
+                let tLeave = isTeacherOnLeave(dStr); let pDay = isPublicHoliday(dStr);
+                if(d.getDay() === 5) cell = '-'; else if(pDay) cell = 'ع'; else if(tLeave) cell = 'ج'; else if(st === 'present') cell = 'ح'; else if(st === 'absent') { cell = 'غ'; absCount++; } else if(st === 'late') { cell = 'ت'; lateCount++; } else if(st === 'dropout') cell = 'م';
+                row.push(cell);
+            }
+            row.push('', absCount > 0 ? absCount : '', lateCount > 0 ? lateCount : ''); data.push(row);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "سجل 5 سلوك"); XLSX.writeFile(wb, `سجل_5_سلوك_${cls}.xlsx`);
+    }
+
+    // 🌟 سجل الحصر المقسم 🌟
+    function generateRangeReport() {
+        const startStr = document.getElementById('range-start').value; const endStr = document.getElementById('range-end').value; const sub = document.getElementById('subjectSelect').value; const grade = document.getElementById('gradeSelect').value; const cls = document.getElementById('classSelect').value;
+        if(!startStr || !endStr) return showToast('الرجاء تحديد التاريخ', 'error'); const start = new Date(startStr); const end = new Date(endStr); if(start > end) return showToast('البداية يجب أن تكون قبل النهاية', 'error');
+        let rowsPerPage = parseInt(document.getElementById('range-rows').value) || 25; let totalPages = Math.ceil(studentsList.length / rowsPerPage); let html = '';
+        if(studentsList.length === 0) { document.getElementById('rangeReportWrap').innerHTML = '<div style="text-align:center; padding:20px; color:red; font-weight:bold;">لا توجد أسماء في هذا الفصل</div>'; return; }
+        for (let p = 0; p < totalPages; p++) {
+            let pageStds = studentsList.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+            html += `<div class="sheet-page" style="background:white; padding:15px; margin-bottom:20px; border:1px solid #ccc; border-radius:8px;">`;
+            html += `<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px; font-weight:bold; font-size:14px; border-bottom: 2px solid #333; padding-bottom:10px;"><div style="text-align:right;">مديرية التربية والتعليم<br>مدرسة: ${DB.info.sch || '................'}</div><div style="text-align:center;"><h3 style="margin:0; color:var(--primary); font-size:20px;">كشف حصر غياب الطلاب</h3><p style="margin:5px 0 0 0; font-size:13px;">للفترة من (${startStr}) إلى (${endStr}) | الصف: ${grade} | فصل: ${cls} | مادة: ${sub}</p></div><div style="text-align:left;">معلم المادة<br>${DB.info.name || '................'}</div></div>`;
+            html += `<table style="width:100%; border-collapse:collapse; font-size:14px; text-align:center; border:2px solid #000;"><thead><tr style="background:#e3f2fd;"><th style="border:1px solid #000; padding:6px;">م</th><th style="border:1px solid #000; padding:6px; min-width:180px;">الطالب</th><th style="border:1px solid #000; padding:6px;">النوع</th><th style="border:1px solid #000; padding:6px;">الحالة</th><th style="border:1px solid #000; padding:6px;">إجمالي الغياب</th><th style="border:1px solid #000; padding:6px;">تواريخ الغياب (يوم/شهر)</th></tr></thead><tbody>`;
+            let hasData = false;
+            pageStds.forEach((s, idx) => {
+                let actualIdx = (p * rowsPerPage) + idx + 1; let absCount = 0; let absDates = [];
+                Object.keys(DB.att).forEach(key => {
+                    if(key.includes(`_${sub}_${s.id}`)) {
+                        const dateStr = key.split('_')[0]; const attDate = new Date(dateStr); attDate.setHours(0,0,0,0); start.setHours(0,0,0,0); end.setHours(0,0,0,0);
+                        if(attDate >= start && attDate <= end && DB.att[key] === 'absent' && !isTeacherOnLeave(dateStr) && !isPublicHoliday(dateStr)) { absCount++; absDates.push(`${attDate.getDate()}/${attDate.getMonth()+1}`); }
+                    }
+                });
+                if(absCount > 0) { hasData = true; html += `<tr><td style="border:1px solid #000; padding:6px;">${actualIdx}</td><td style="border:1px solid #000; padding:6px; text-align:right; font-weight:bold; color:var(--primary);">${s.name}</td><td style="border:1px solid #000; padding:6px;">${s.gender === 'F' ? 'بنت' : 'ولد'}</td><td style="border:1px solid #000; padding:6px;">${s.sts || 'مستجد'}</td><td style="border:1px solid #000; padding:6px; color:#c0392b; font-weight:bold;">${absCount}</td><td style="border:1px solid #000; padding:6px; font-size:12px; direction:ltr; text-align:right;">${absDates.join(' ، ')}</td></tr>`; }
+            });
+            if(!hasData) html += `<tr><td colspan="6" style="padding:20px; color:var(--success); font-weight:bold; border:1px solid #000;">لا توجد حالات غياب في هذه الصفحة.</td></tr>`;
+            html += `</tbody></table><div style="display:flex; justify-content:space-between; margin-top:30px; font-weight:bold; font-size:14px;"><div>شئون الطلبة<br>.......................</div><div style="color:#999; font-size:11px; margin-top:15px;">صفحة ${p+1} من ${totalPages}</div><div>يعتمد، مدير المدرسة<br>.......................</div></div></div>`;
+        }
+        document.getElementById('rangeReportWrap').innerHTML = html;
+    }
+
+    function exportRangeExcel() {
+        if(studentsList.length === 0) return showToast('لا توجد بيانات', 'error');
+        const startStr = document.getElementById('range-start').value; const endStr = document.getElementById('range-end').value; const sub = document.getElementById('subjectSelect').value; const cls = document.getElementById('classSelect').value;
+        const start = new Date(startStr); const end = new Date(endStr); let data = [['م', 'الطالب', 'النوع', 'الحالة', 'إجمالي الغياب', 'تواريخ الغياب']];
+        studentsList.forEach((s, idx) => {
+            let absCount = 0; let absDates = [];
+            Object.keys(DB.att).forEach(key => {
+                if(key.includes(`_${sub}_${s.id}`)) {
+                    const dateStr = key.split('_')[0]; const attDate = new Date(dateStr); attDate.setHours(0,0,0,0); start.setHours(0,0,0,0); end.setHours(0,0,0,0);
+                    if(attDate >= start && attDate <= end && DB.att[key] === 'absent' && !isTeacherOnLeave(dateStr) && !isPublicHoliday(dateStr)) { absCount++; absDates.push(`${attDate.getDate()}/${attDate.getMonth()+1}`); }
+                }
+            });
+            if(absCount > 0) { data.push([idx+1, s.name, s.gender === 'F' ? 'بنت' : 'ولد', s.sts || 'مستجد', absCount, absDates.join(' ، ')]); }
+        });
+        const ws = XLSX.utils.aoa_to_sheet(data); ws['!cols'] = [{wch: 5}, {wch: 30}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 40}]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "حصر الغياب"); XLSX.writeFile(wb, `حصر_الغياب_${cls}.xlsx`);
+    }
+
+    function generateWarnings() {
+        const monthStr = document.getElementById('warn-month-input').value; if(!monthStr) return; const sub = document.getElementById('subjectSelect').value;
+        const tbody = document.getElementById('warnBody'); tbody.innerHTML = ''; let hasWarn = false; let count = 1;
+        studentsList.forEach(s => {
+            let absTotal = 0;
+            Object.keys(DB.att).forEach(key => { if(key.includes(s.id) && key.includes(sub) && key.startsWith(monthStr)) { const dateStr = key.split('_')[0]; if(DB.att[key] === 'absent' && !isTeacherOnLeave(dateStr) && !isPublicHoliday(dateStr)) absTotal++; } });
+            if(absTotal >= 3) {
+                hasWarn = true;
+                tbody.innerHTML += `<tr><td style="border:1px solid #ccc; padding:6px;">${count++}</td><td style="border:1px solid #ccc; padding:6px; text-align:right; font-weight:bold;">${s.name}</td><td style="border:1px solid #ccc; padding:6px; color:var(--danger); font-weight:900;">${absTotal} أيام</td><td style="border:1px solid #ccc; padding:6px;" class="no-print"><button class="warn-btn" onclick="printWarning('${s.name}', ${absTotal}, '${monthStr}')"><i class="fa fa-print"></i> طباعة إنذار</button></td></tr>`;
+            }
+        });
+        if(!hasWarn) tbody.innerHTML = '<tr><td colspan="4" style="border:1px solid #ccc; padding:20px; color:#27ae60; font-weight:bold;">جميع الطلاب ملتزمون، لا توجد إنذارات! 🎉</td></tr>';
+    }
+
+    function printWarning(stdName, days, monthStr) {
+        const schName = IS_MANAGER ? 'إدارة المدرسة' : (DB.info.sch || 'المدرسة');
+        const printContainer = document.createElement('div');
+        printContainer.style.position = 'absolute'; printContainer.style.top = '-9999px'; printContainer.style.left = '-9999px'; printContainer.style.width = '800px'; 
+        printContainer.style.background = 'white'; printContainer.style.padding = '20px'; printContainer.style.direction = 'rtl'; printContainer.style.fontFamily = "'Cairo', sans-serif";
+        printContainer.innerHTML = `<div style="border: 4px double #333; padding: 40px; border-radius: 10px; background: white; margin-top: 20px;"><div style="text-align:center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 30px;"><h2 style="margin:0; font-size:28px; color:#c0392b;">إشعار وإنذار غياب</h2><p style="margin:10px 0; font-size:18px;">وزارة التربية والتعليم | مدرسة: ${schName}</p></div><div style="font-size: 22px; line-height: 2.2; font-weight: bold;"><p>السيد المحترم / ولي أمر الطالب(ة): <span style="color:#2980b9; font-size:26px;">${stdName}</span></p><p>تحية طيبة وبعد،،،</p><p>نحيط سيادتكم علماً بأن نجلكم قد تجاوز نسبة الغياب المقررة قانوناً، حيث تغيب عن الحضور لمدة <span style="color:#c0392b; font-size:26px; font-weight:900;">(${days} أيام)</span> خلال شهر (${monthStr}).</p><p>نرجو من سيادتكم سرعة الحضور إلى إدارة المدرسة لمعرفة الأسباب وتدارك الأمر، تجنباً لاتخاذ الإجراءات القانونية وفصل الطالب لتجاوز نسبة الغياب المسموح بها.</p><p style="text-align:center; font-size:18px; margin-top:40px;">ولكم جزيل الشكر والتقدير للتعاون لصالح أبنائنا الطلاب.</p></div><div style="display: flex; justify-content: space-between; margin-top: 60px; font-size: 20px; font-weight: bold;"><div>شئون الطلبة<br>......................</div><div>يعتمد، مدير المدرسة<br>......................</div></div></div>`;
+        document.body.appendChild(printContainer);
+        const origBody = document.body.innerHTML; document.body.innerHTML = printContainer.innerHTML; window.print(); document.body.innerHTML = origBody; location.reload(); 
+    }
+
+    // =====================================================================
+    // 🌟 1. سجل الغياب المجمع (الأسابيع 1-14) 🌟
+    // =====================================================================
+    function openWeeklyModal() {
+        if(studentsList.length === 0) return showToast("اختر الفصل والمادة أولاً من الشاشة الرئيسية", "error");
+        renderWeeklyTable(); openModal('mod-weekly');
+    }
+
+    function renderWeeklyTable() {
+        const sub = document.getElementById('subjectSelect').value; const cls = document.getElementById('classSelect').value; const grade = document.getElementById('gradeSelect').value; const baseKey = `${grade}_${cls}_${sub}`;
+        if(!DB.wDates) DB.wDates = {}; const wksNames = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر'];
+        
+        const incSat = document.getElementById('inc-sat-weekly').checked; const colCount = incSat ? 6 : 5; 
+        let rowsPerPage = parseInt(document.getElementById('weekly-rows').value) || 25; let totalPages = Math.ceil(studentsList.length / rowsPerPage); let html = '';
+
+        for (let p = 0; p < totalPages; p++) {
+            let pageStds = studentsList.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+            html += `<div class="sheet-page" style="background:white; padding:15px; margin-bottom:20px; border:1px solid #ccc; border-radius:8px;">`;
+            html += `<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px; font-weight:bold; font-size:13px; border-bottom: 2px solid #333; padding-bottom:10px;"><div style="text-align:right;">مديرية التربية والتعليم<br>مدرسة: ${DB.info.sch || '................'}</div><div style="text-align:center;"><h3 style="margin:0; color:var(--primary); font-size:20px;">سجل حصر الغياب بالأسابيع (مجمع)</h3><p style="margin:5px 0 0 0; font-size:13px;">الصف: ${grade} | فصل: ${cls} | المادة: ${sub}</p></div><div style="text-align:left;">معلم المادة<br>${DB.info.name || '................'}</div></div>`;
+            html += `<table style="font-size:12px; width:100%; border-collapse:collapse; border:2px solid #000; text-align:center;"><thead><tr style="background:#e3f2fd;"><th rowspan="2" style="border:1px solid #000; width:20px; padding:2px;">م</th><th rowspan="2" style="border:1px solid #000; min-width:120px; padding:2px;">اسم الطالب</th>`;
+            wksNames.forEach(w => { html += `<th style="border:1px solid #000; padding:2px; font-size:10px;">${w}</th>`; });
+            html += `<th rowspan="2" style="border:1px solid #000; background:#ffebee; color:#c62828; padding:2px;">الإجمالي</th></tr><tr style="background:#f4f6f8;">`;
+            wksNames.forEach((w, i) => { let savedD = DB.wDates[`${baseKey}_w${i}`] || ''; html += `<th style="border:1px solid #000; padding:1px;"><input type="date" class="week-date-input" value="${savedD}" onchange="updateWDate('${baseKey}', ${i}, this.value)"></th>`; });
+            html += `</tr></thead><tbody>`;
+
+            pageStds.forEach((s, idx) => {
+                let actualIdx = (p * rowsPerPage) + idx + 1; let totalTerm = 0; html += `<tr><td style="border:1px solid #000; padding:2px;">${actualIdx}</td><td style="border:1px solid #000; text-align:right; font-weight:bold; padding:4px;">${s.name}</td>`;
+                wksNames.forEach((w, i) => {
+                    let startD = DB.wDates[`${baseKey}_w${i}`]; let weekAbs = 0; let tLeaveInWeek = false; let pDayInWeek = false;
+                    if(startD) {
+                        let dObj = new Date(startD);
+                        for(let x=0; x<colCount; x++) {
+                            let curr = new Date(dObj); curr.setDate(curr.getDate() + x); let dStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+                            if(isTeacherOnLeave(dStr)) tLeaveInWeek = true; if(isPublicHoliday(dStr)) pDayInWeek = true;
+                            if(DB.att[`${dStr}_${sub}_${s.id}`] === 'absent' && !isTeacherOnLeave(dStr) && !isPublicHoliday(dStr)) weekAbs++;
+                        }
+                    }
+                    totalTerm += weekAbs; let cellVal = weekAbs > 0 ? weekAbs : ''; if(pDayInWeek && weekAbs === 0) cellVal = 'ع'; else if(tLeaveInWeek && weekAbs === 0) cellVal = 'ج';
+                    html += `<td style="border:1px solid #000; color:${weekAbs>0?'#c0392b':((tLeaveInWeek||pDayInWeek)?'#9b59b6':'#555')}; font-weight:bold; background:${weekAbs>0?'#fff5f5':(pDayInWeek?'#fdf3e8':(tLeaveInWeek?'#f5eef8':''))}; padding:2px;">${cellVal}</td>`;
+                });
+                html += `<td style="border:1px solid #000; background:#ffebee; color:#c0392b; font-weight:900; font-size:14px; padding:2px;">${totalTerm > 0 ? totalTerm : ''}</td></tr>`;
+            });
+            html += `</tbody></table><div style="display:flex; justify-content:space-between; margin-top:20px; font-weight:bold; font-size:14px;"><div>شئون الطلبة<br>.......................</div><div style="color:#999; font-size:12px; margin-top:15px;">صفحة ${p+1} من ${totalPages}</div><div>يعتمد، مدير المدرسة<br>.......................</div></div></div>`;
+        }
+        document.getElementById('weekly-wrap').innerHTML = html;
+    }
+
+    function updateWDate(baseKey, weekIdx, val) {
+        if(!DB.wDates) DB.wDates = {}; DB.wDates[`${baseKey}_w${weekIdx}`] = val;
+        let fullDB = JSON.parse(localStorage.getItem(DB.saveKey)); if(!fullDB.wDates) fullDB.wDates = {}; fullDB.wDates = DB.wDates;
+        localStorage.setItem(DB.saveKey, JSON.stringify(fullDB)); renderWeeklyTable(); showToast('تم الحفظ', 'success');
+    }
+
+    function exportWeeklyExcel() {
+        if(studentsList.length === 0) return showToast('لا توجد بيانات', 'error');
+        const sub = document.getElementById('subjectSelect').value; const cls = document.getElementById('classSelect').value; const grade = document.getElementById('gradeSelect').value; const baseKey = `${grade}_${cls}_${sub}`;
+        const incSat = document.getElementById('inc-sat-weekly').checked; const colCount = incSat ? 6 : 5;
+        let headerRow = ['م', 'الاسم']; for(let i=1; i<=14; i++) headerRow.push(`أسبوع ${i}`); headerRow.push('جملة الغياب'); let data = [headerRow];
+        studentsList.forEach((s, idx) => {
+            let row = [idx + 1, s.name]; let totalTerm = 0;
+            for(let i=0; i<14; i++) {
+                let startD = DB.wDates[`${baseKey}_w${i}`]; let weekAbs = 0; let tLeaveInWeek = false; let pDayInWeek = false;
+                if(startD) {
+                    let dObj = new Date(startD);
+                    for(let x=0; x<colCount; x++) {
+                        let curr = new Date(dObj); curr.setDate(curr.getDate() + x); let dStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+                        if(isTeacherOnLeave(dStr)) tLeaveInWeek = true; if(isPublicHoliday(dStr)) pDayInWeek = true;
+                        if(DB.att[`${dStr}_${sub}_${s.id}`] === 'absent' && !isTeacherOnLeave(dStr) && !isPublicHoliday(dStr)) weekAbs++;
+                    }
+                }
+                totalTerm += weekAbs; let cellVal = weekAbs > 0 ? weekAbs : ''; if(pDayInWeek && weekAbs === 0) cellVal = 'ع'; else if(tLeaveInWeek && weekAbs === 0) cellVal = 'ج';
+                row.push(cellVal);
+            }
+            row.push(totalTerm > 0 ? totalTerm : ''); data.push(row);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(data); ws['!cols'] = [{wch: 5}, {wch: 30}]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "الغياب"); XLSX.writeFile(wb, `سجل_الغياب_المجمع_فصل_${cls}.xlsx`);
+    }
+
+    // =====================================================================
+    // 🌟 2. سجل الكنترول التفصيلي باليوم 🌟
+    // =====================================================================
+    function openControlModal() {
+        if(studentsList.length === 0) return showToast("اختر الفصل والمادة أولاً", "error"); renderControlTable(); openModal('mod-control');
+    }
+
+    function renderControlTable() {
+        const sub = document.getElementById('subjectSelect').value; const cls = document.getElementById('classSelect').value; const grade = document.getElementById('gradeSelect').value; const baseKey = `${grade}_${cls}_${sub}`;
+        if(!DB.wDates) DB.wDates = {}; const wksNames = ['الأسبوع الأول','الأسبوع الثاني','الأسبوع الثالث','الأسبوع الرابع','الأسبوع الخامس'];
+        const incSat = document.getElementById('inc-sat-ctrl').checked; const daysNames = incSat ? ['س', 'ح', 'ن', 'ث', 'ر', 'خ'] : ['ح', 'ن', 'ث', 'ر', 'خ']; const colCount = daysNames.length;
+        let rowsPerPage = parseInt(document.getElementById('control-rows').value) || 25; let totalPages = Math.ceil(studentsList.length / rowsPerPage); let html = '';
+
+        for (let p = 0; p < totalPages; p++) {
+            let pageStds = studentsList.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+            html += `<div class="sheet-page" style="background:white; padding:15px; margin-bottom:20px; border:1px solid #ccc; border-radius:8px;">`;
+            html += `<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px; font-weight:bold; font-size:13px; border-bottom: 2px solid #333; padding-bottom:10px;"><div style="text-align:right;">مديرية التربية والتعليم<br>مدرسة: ${DB.info.sch || '................'}</div><div style="text-align:center;"><h3 style="margin:0; color:var(--primary); font-size:20px;">سجل رصد غياب فصل (مفصل بالأيام)</h3><p style="margin:5px 0 0 0; font-size:13px;">الصف: ${grade} | فصل: ${cls} | المادة: ${sub}</p></div><div style="text-align:left;">معلم المادة<br>${DB.info.name || '................'}</div></div>`;
+            html += `<table style="font-size:11px; width:100%; border-collapse:collapse; border: 2px solid #000; text-align:center;"><thead><tr><th rowspan="2" style="width:20px; padding:2px; border: 1px solid #000;">م</th><th rowspan="2" style="min-width:140px; padding:2px; border: 1px solid #000;">الاسم</th>`;
+            
+            wksNames.forEach((w, i) => { let savedD = DB.wDates[`${baseKey}_ctrl_w${i}`] || ''; html += `<th colspan="${colCount}" style="border: 1px solid #000; background:#e3f2fd;">${w} <br> <input type="date" class="week-date-input" value="${savedD}" onchange="updateControlDate('${baseKey}', ${i}, this.value)" style="margin-top:3px; max-width:110px;"></th>`; });
+            html += `</tr><tr>`;
+            for(let i=0; i<5; i++) {
+                let startD = DB.wDates[`${baseKey}_ctrl_w${i}`]; let dObj = startD ? new Date(startD) : null;
+                daysNames.forEach((d, dayIdx) => { let dateLabel = ''; if(dObj) { let curr = new Date(dObj); curr.setDate(curr.getDate() + dayIdx); dateLabel = `${curr.getDate()}/${curr.getMonth()+1}`; } html += `<th style="padding:2px; font-size:11px; background:#f4f6f8; border: 1px solid #000;">${d} <br> <span style="font-size:9px; color:#c0392b; font-weight:900;">${dateLabel}</span></th>`; });
+            }
+            html += `</tr></thead><tbody>`;
+
+            pageStds.forEach((s, idx) => {
+                let actualIdx = (p * rowsPerPage) + idx + 1;
+                html += `<tr><td style="border: 1px solid #000;">${actualIdx}</td><td style="text-align:right; font-weight:bold; padding-right:5px; border: 1px solid #000;">${s.name}</td>`;
+                for(let i=0; i<5; i++) {
+                    let startD = DB.wDates[`${baseKey}_ctrl_w${i}`];
+                    if(startD) {
+                        let dObj = new Date(startD);
+                        for(let x=0; x<colCount; x++) {
+                            let curr = new Date(dObj); curr.setDate(curr.getDate() + x);
+                            let dStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+                            let status = DB.att[`${dStr}_${sub}_${s.id}`]; let cellTxt = ''; let cellBg = '';
+                            
+                            let tLeave = isTeacherOnLeave(dStr); let pDay = isPublicHoliday(dStr);
+                            
+                            if(pDay) { cellTxt = '<span style="color:#e67e22; font-weight:900;">ع</span>'; cellBg = '#fdf3e8'; }
+                            else if(tLeave) { cellTxt = '<span style="color:#9b59b6; font-weight:900;">ج</span>'; cellBg = '#f5eef8'; }
+                            else if(status === 'absent') { cellTxt = '<span style="color:#c0392b; font-weight:900;">غ</span>'; cellBg = '#ffebee'; }
+                            else if(status === 'present') { cellTxt = '<span style="color:#27ae60; font-weight:900;">ح</span>'; }
+                            else if(status === 'late') { cellTxt = '<span style="color:#f39c12; font-weight:900;">ت</span>'; }
+                            else if(status === 'dropout') { cellTxt = '<span style="color:#7f8c8d; font-weight:900;">م</span>'; cellBg = '#eeeeee'; }
+                            
+                            html += `<td style="border: 1px solid #000; background:${cellBg}; text-align:center;">${cellTxt}</td>`;
+                        }
+                    } else { for(let x=0; x<colCount; x++) html += `<td style="border: 1px solid #000;"></td>`; }
+                }
+                html += `</tr>`;
+            });
+            html += `</tbody></table><div style="display:flex; justify-content:space-between; margin-top:20px; font-weight:bold; font-size:14px;"><div>شئون الطلبة<br>.......................</div><div style="color:#999; font-size:11px; margin-top:15px;">صفحة ${p+1} من ${totalPages}</div><div>يعتمد، مدير المدرسة<br>.......................</div></div></div>`;
+        }
+        document.getElementById('control-wrap').innerHTML = html;
+    }
+
+    function updateControlDate(baseKey, weekIdx, val) {
+        if(!DB.wDates) DB.wDates = {}; DB.wDates[`${baseKey}_ctrl_w${weekIdx}`] = val;
+        let fullDB = JSON.parse(localStorage.getItem(DB.saveKey)); if(!fullDB.wDates) fullDB.wDates = {}; fullDB.wDates = DB.wDates;
+        localStorage.setItem(DB.saveKey, JSON.stringify(fullDB)); renderControlTable(); showToast('تم الحفظ', 'success');
+    }
+
+    function exportControlExcel() {
+        if(studentsList.length === 0) return showToast('لا توجد بيانات للتصدير', 'error');
+        const sub = document.getElementById('subjectSelect').value; const cls = document.getElementById('classSelect').value; const grade = document.getElementById('gradeSelect').value; const baseKey = `${grade}_${cls}_${sub}`;
+        const incSat = document.getElementById('inc-sat-ctrl').checked; const daysNames = incSat ? ['س','ح','ن','ث','ر','خ'] : ['ح','ن','ث','ر','خ']; const colCount = daysNames.length;
+
+        let row1 = ['م', 'الاسم']; let row2 = ['', ''];
+        for(let i=0; i<5; i++) { row1.push(`الأسبوع ${i+1}`); for(let j=1; j<colCount; j++) row1.push(''); daysNames.forEach(d => row2.push(d)); }
+        let data = [row1, row2];
+        
+        studentsList.forEach((s, idx) => {
+            let row = [idx + 1, s.name];
+            for(let i=0; i<5; i++) {
+                let startD = DB.wDates[`${baseKey}_ctrl_w${i}`];
+                if(startD) {
+                    let dObj = new Date(startD);
+                    for(let x=0; x<colCount; x++) {
+                        let curr = new Date(dObj); curr.setDate(curr.getDate() + x);
+                        let dStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+                        let st = DB.att[`${dStr}_${sub}_${s.id}`]; let tLeave = isTeacherOnLeave(dStr); let pDay = isPublicHoliday(dStr);
+                        if(pDay) row.push('ع'); else if(tLeave) row.push('ج'); else if(st === 'absent') row.push('غ'); else if(st === 'present') row.push('ح'); else if(st === 'late') row.push('ت'); else if(st === 'dropout') row.push('م'); else row.push('');
+                    }
+                } else { for(let x=0; x<colCount; x++) row.push(''); }
+            }
+            data.push(row);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(data); ws['!merges'] = [ {s:{r:0,c:0},e:{r:1,c:0}}, {s:{r:0,c:1},e:{r:1,c:1}} ];
+        let startCol = 2; for(let i=0; i<5; i++) { ws['!merges'].push({s:{r:0,c:startCol},e:{r:0,c:startCol+colCount-1}}); startCol+=colCount; }
+        ws['!cols'] = [{wch: 5}, {wch: 25}]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "الكنترول"); XLSX.writeFile(wb, `سجل_كنترول_فصل_${cls}.xlsx`);
+    }
+</script>
+</body>
+</html>
